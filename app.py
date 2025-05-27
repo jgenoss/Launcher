@@ -8,6 +8,7 @@ import json
 import hashlib
 from datetime import datetime
 import zipfile
+from utils import format_file_size
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'
@@ -52,6 +53,40 @@ def nl2br_filter(s):
 @app.template_filter('is_file_exists')
 def is_file_exists_filter(path):
     return os.path.isfile(path)
+
+@app.template_filter('get_total_size')
+def get_total_size_filter(items):
+    """Calcular tamaño total de una lista de elementos"""
+    if not items:
+        return 0
+    total = 0
+    for item in items:
+        if hasattr(item, 'file_size') and item.file_size:
+            total += item.file_size
+    return total
+
+@app.template_filter('get_file_size')
+def get_file_size_filter(file_path):
+    """Obtener tamaño de archivo formateado"""
+    try:
+        if os.path.exists(file_path):
+            size_bytes = os.path.getsize(file_path)
+            return format_file_size(size_bytes)
+        return "0 B"
+    except:
+        return "0 B"
+
+@app.template_filter('get_total_launcher_size')
+def get_total_launcher_size_filter(launchers):
+    """Calcular tamaño total de launchers"""
+    total_bytes = 0
+    for launcher in launchers:
+        if launcher.file_path and os.path.exists(launcher.file_path):
+            try:
+                total_bytes += os.path.getsize(launcher.file_path)
+            except:
+                continue
+    return format_file_size(total_bytes)
 
 @app.route('/')
 def index():
@@ -112,4 +147,21 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         create_admin_user()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    
+    # Buscar puerto disponible si 5000 está ocupado
+    import socket
+    port = 5000
+    while True:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('0.0.0.0', port))
+            sock.close()
+            break
+        except OSError:
+            port += 1
+            if port > 5010:
+                port = 5000
+                break
+    
+    print(f"Iniciando servidor en puerto {port}")
+    app.run(debug=True, host='0.0.0.0', port=port)

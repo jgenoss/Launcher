@@ -133,7 +133,7 @@
             </button>
         </div>
     </div>
-    
+
     <div class="card-body p-0">
         {% if messages %}
             <div class="table-responsive">
@@ -247,14 +247,14 @@
                                             title="Ver detalles">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    
+
                                     <button type="button" 
                                             class="btn btn-outline-success"
                                             onclick="duplicateMessage({{ message.id }})"
                                             title="Duplicar">
                                         <i class="bi bi-copy"></i>
                                     </button>
-                                    
+
                                     <div class="btn-group btn-group-sm" role="group">
                                         <button type="button" 
                                                 class="btn btn-outline-secondary dropdown-toggle" 
@@ -325,14 +325,14 @@
                                     {{ message.type }}
                                 </span>
                             </dd>
-                            
+
                             <dt class="col-sm-4">Estado:</dt>
                             <dd class="col-sm-8">
                                 <span class="badge {% if message.is_active %}bg-success{% else %}bg-secondary{% endif %}">
                                     {% if message.is_active %}Activo{% else %}Inactivo{% endif %}
                                 </span>
                             </dd>
-                            
+
                             <dt class="col-sm-4">Prioridad:</dt>
                             <dd class="col-sm-8">
                                 <span class="badge bg-light text-dark">{{ message.priority }}</span>
@@ -343,15 +343,15 @@
                                         {% else %}
                                             <i class="bi bi-star text-muted"></i>
                                         {% endif %}
-                                    {% endfor %}
+                                    </div>
                                 </div>
                             </dd>
-                            
+
                             <dt class="col-sm-4">Creado:</dt>
                             <dd class="col-sm-8">{{ message.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
                         </dl>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <h6 class="fw-bold">Vista Previa en Launcher</h6>
                         <div class="launcher-preview-box p-3 border rounded bg-light">
@@ -370,13 +370,13 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <hr>
                 <h6 class="fw-bold">Mensaje Completo</h6>
                 <div class="message-full-content bg-light p-3 rounded">
                     {{ message.message | nl2br | safe }}
                 </div>
-                
+
                 <hr>
                 <h6 class="fw-bold">JSON Output</h6>
                 <pre class="bg-dark text-light p-3 rounded small"><code>{
@@ -401,6 +401,7 @@
     </div>
 </div>
 {% endfor %}
+{% endfor %}
 
 {% endblock %}
 
@@ -410,48 +411,48 @@
     document.getElementById('searchInput').addEventListener('input', filterMessages);
     document.getElementById('typeFilter').addEventListener('change', filterMessages);
     document.getElementById('statusFilter').addEventListener('change', filterMessages);
-    
+
     function filterMessages() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
-        
+
         const rows = document.querySelectorAll('#messagesTable tbody tr');
-        
+
         rows.forEach(row => {
             const type = row.dataset.type;
             const status = row.dataset.status;
             const message = row.dataset.message;
-            
+
             let show = true;
-            
+
             if (searchTerm && !message.includes(searchTerm) && !type.includes(searchTerm)) {
                 show = false;
             }
-            
+
             if (typeFilter && !type.includes(typeFilter)) {
                 show = false;
             }
-            
+
             if (statusFilter && status !== statusFilter) {
                 show = false;
             }
-            
+
             row.style.display = show ? '' : 'none';
         });
     }
-    
+
     function clearFilters() {
         document.getElementById('searchInput').value = '';
         document.getElementById('typeFilter').value = '';
         document.getElementById('statusFilter').value = '';
         filterMessages();
     }
-    
+
     // Toggle message status
     function toggleMessageStatus(messageId, isActive) {
         const statusBadge = document.getElementById(`statusBadge${messageId}`);
-        
+
         // Update badge
         if (isActive) {
             statusBadge.textContent = 'Activo';
@@ -460,18 +461,18 @@
             statusBadge.textContent = 'Inactivo';
             statusBadge.className = 'badge bg-secondary';
         }
-        
+
         // Here you would make an AJAX call to update the status
         console.log(`Toggle message ${messageId} to ${isActive ? 'active' : 'inactive'}`);
-        
+
         showAlert('success', `Mensaje ${isActive ? 'activado' : 'desactivado'} correctamente`);
     }
-    
+
     // Toggle full message display
     function toggleFullMessage(button, fullText) {
         const messageDiv = button.parentNode.querySelector('.message-text');
         const isExpanded = button.textContent.trim() === 'Ver menos';
-        
+
         if (isExpanded) {
             messageDiv.textContent = fullText.substring(0, 100) + '...';
             button.textContent = 'Ver más';
@@ -480,62 +481,78 @@
             button.textContent = 'Ver menos';
         }
     }
-    
+
     // Delete message
     function deleteMessage(messageId) {
-        if (confirm('¿Eliminar este mensaje? Esta acción no se puede deshacer.')) {
-            // Here you would implement the actual deletion
+        if (confirm('¿Eliminar este mensaje?')) {
             console.log('Deleting message:', messageId);
-            showAlert('info', 'Función de eliminación no implementada en el frontend');
+
+            // Crear form para enviar la eliminación
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `{{ url_for("admin.delete_message", message_id=0) }}`.replace('0', messageId);
+
+            // Agregar token CSRF si existe
+            const csrfToken = document.querySelector('meta[name=csrf-token]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = csrfToken.getAttribute('content');
+                form.appendChild(csrfInput);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
         }
     }
-    
+
     // Duplicate message
     function duplicateMessage(messageId) {
         // Here you would implement message duplication
         console.log('Duplicating message:', messageId);
         showAlert('info', 'Función de duplicación no implementada en el frontend');
     }
-    
+
     // Edit message
     function editMessage(messageId) {
         // Here you would redirect to edit page or open edit modal
         console.log('Editing message:', messageId);
         showAlert('info', 'Función de edición no implementada en el frontend');
     }
-    
+
     // Change priority
     function changePriority(messageId, currentPriority) {
         const newPriority = prompt(`Ingresa nueva prioridad (1-5):`, currentPriority);
-        
+
         if (newPriority && newPriority >= 1 && newPriority <= 5) {
             console.log(`Change priority for message ${messageId} to ${newPriority}`);
             showAlert('success', `Prioridad actualizada a ${newPriority}`);
         }
     }
-    
+
     // Checkbox selection
     document.getElementById('selectAllCheckbox').addEventListener('change', function() {
         const checkboxes = document.querySelectorAll('.message-checkbox');
         checkboxes.forEach(cb => cb.checked = this.checked);
         updateActionButtons();
     });
-    
+
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('message-checkbox')) {
             updateActionButtons();
         }
     });
-    
+
     function updateActionButtons() {
         const selectedCheckboxes = document.querySelectorAll('.message-checkbox:checked');
         const activateBtn = document.getElementById('activateBtn');
         const deleteBtn = document.getElementById('deleteBtn');
-        
+
         const hasSelection = selectedCheckboxes.length > 0;
         activateBtn.disabled = !hasSelection;
         deleteBtn.disabled = !hasSelection;
-        
+
         if (hasSelection) {
             activateBtn.innerHTML = `<i class="bi bi-toggle-on"></i> Activar (${selectedCheckboxes.length})`;
             deleteBtn.innerHTML = `<i class="bi bi-trash"></i> Eliminar (${selectedCheckboxes.length})`;
@@ -544,46 +561,72 @@
             deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
         }
     }
-    
+
     // Bulk actions
     function activateSelected() {
         const selectedCheckboxes = document.querySelectorAll('.message-checkbox:checked');
         const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-        
+
         if (selectedIds.length === 0) return;
-        
+
         console.log('Activating messages:', selectedIds);
         showAlert('success', `${selectedIds.length} mensajes activados`);
     }
-    
+
     function deleteSelected() {
         const selectedCheckboxes = document.querySelectorAll('.message-checkbox:checked');
         const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
-        
+
         if (selectedIds.length === 0) return;
-        
+
         if (confirm(`¿Eliminar ${selectedIds.length} mensaje(s) seleccionado(s)? Esta acción no se puede deshacer.`)) {
-            console.log('Deleting messages:', selectedIds);
-            showAlert('info', 'Función de eliminación múltiple no implementada en el frontend');
+            const messageIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+            console.log('Deleting messages:', messageIds);
+
+            // Crear form para enviar los IDs
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("admin.delete_selected_messages") }}';
+
+            messageIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'message_ids';
+                input.value = id;
+                form.appendChild(input);
+            });
+
+            // Agregar token CSRF si existe
+            const csrfToken = document.querySelector('meta[name=csrf-token]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = csrfToken.getAttribute('content');
+                form.appendChild(csrfInput);
+            }
+
+            document.body.appendChild(form);
+            form.submit();
         }
     }
-    
+
     // Other actions
     function toggleAllMessages() {
         const switches = document.querySelectorAll('input[type="checkbox"][id^="status"]');
         const allActive = Array.from(switches).every(sw => sw.checked);
-        
+
         switches.forEach(sw => {
             sw.checked = !allActive;
             const messageId = sw.id.replace('status', '');
             toggleMessageStatus(messageId, sw.checked);
         });
     }
-    
+
     function previewInLauncher() {
         window.open('/api/message.json', '_blank');
     }
-    
+
     function exportMessages() {
         const messages = [];
         document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
@@ -597,10 +640,10 @@
                 });
             }
         });
-        
+
         const csv = 'Type,Message,Status,Date\n' + 
                     messages.map(m => `"${m.type}","${m.message}","${m.status}","${m.date}"`).join('\n');
-        
+
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -610,10 +653,10 @@
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        
+
         showAlert('success', 'Mensajes exportados como messages.csv');
     }
-    
+
     // Show alert helper
     function showAlert(type, message) {
         const alertDiv = document.createElement('div');
@@ -623,9 +666,9 @@
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        
+
         document.body.appendChild(alertDiv);
-        
+
         setTimeout(() => {
             if (alertDiv.parentNode) {
                 const alert = new bootstrap.Alert(alertDiv);

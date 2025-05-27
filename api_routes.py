@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, send_from_directory, current_app
 from models import GameVersion, GameFile, UpdatePackage, LauncherVersion, NewsMessage, DownloadLog, db
 import os
 import json
+from datetime import datetime
 
 api_bp = Blueprint('api', __name__)
 
@@ -80,13 +81,22 @@ def messages():
     try:
         active_messages = NewsMessage.query.filter_by(is_active=True).order_by(NewsMessage.priority.desc(), NewsMessage.created_at.desc()).all()
         
-        messages_data = [msg.to_dict() for msg in active_messages]
+        messages_data = []
+        for msg in active_messages:
+            messages_data.append({
+                'id': msg.id,
+                'type': msg.type,
+                'message': msg.message,
+                'priority': msg.priority,
+                'created_at': msg.created_at.isoformat() if msg.created_at else None
+            })
         
         log_download('message.json', 'messages')
         
         return jsonify(messages_data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"Error in messages endpoint: {e}")
+        return jsonify({"error": str(e), "messages": []}), 500
 
 @api_bp.route('/banner.html')
 def banner():
@@ -160,7 +170,7 @@ def api_status():
             "current_launcher_version": launcher_version.version if launcher_version else "N/A",
             "total_files": total_files,
             "total_updates": total_updates,
-            "timestamp": db.func.now()
+            "timestamp": datetime.utcnow().isoformat()
         })
     except Exception as e:
         return jsonify({

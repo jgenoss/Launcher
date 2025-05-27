@@ -13,6 +13,15 @@
                 <i class="bi bi-arrow-clockwise"></i> Actualizar
             </button>
         </div>
+        <div class="input-group input-group-sm me-2" style="width: 200px;">
+            <input type="text" class="form-control" placeholder="Buscar..." id="searchInput">
+        </div>
+        <select class="form-select form-select-sm me-2" id="typeFilter" style="width: auto;">
+            <option value="">Todos los tipos</option>
+            {% for file_type in file_types %}
+            <option value="{{ file_type }}">{{ file_type }}</option>
+            {% endfor %}
+        </select>
         <div class="btn-group">
             <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                 <i class="bi bi-gear"></i> Acciones
@@ -433,18 +442,30 @@
     let autoRefreshInterval = null;
     
     // Filter functionality
-    document.getElementById('searchInput').addEventListener('input', filterLogs);
-    document.getElementById('typeFilter').addEventListener('change', filterLogs);
-    document.getElementById('statusFilter').addEventListener('change', filterLogs);
-    document.getElementById('timeFilter').addEventListener('change', filterLogs);
-    document.getElementById('ipFilter').addEventListener('input', filterLogs);
+    const searchInput = document.getElementById('searchInput');
+    const typeFilter = document.getElementById('typeFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const timeFilter = document.getElementById('timeFilter');
+    const ipFilter = document.getElementById('ipFilter');
+    
+    if (searchInput) searchInput.addEventListener('input', filterLogs);
+    if (typeFilter) typeFilter.addEventListener('change', filterLogs);
+    if (statusFilter) statusFilter.addEventListener('change', filterLogs);
+    if (timeFilter) timeFilter.addEventListener('change', filterLogs);
+    if (ipFilter) ipFilter.addEventListener('input', filterLogs);
     
     function filterLogs() {
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        const typeFilter = document.getElementById('typeFilter').value;
-        const statusFilter = document.getElementById('statusFilter').value;
-        const timeFilter = document.getElementById('timeFilter').value;
-        const ipFilter = document.getElementById('ipFilter').value;
+        const searchInputEl = document.getElementById('searchInput');
+        const typeFilterEl = document.getElementById('typeFilter');
+        const statusFilterEl = document.getElementById('statusFilter');
+        const timeFilterEl = document.getElementById('timeFilter');
+        const ipFilterEl = document.getElementById('ipFilter');
+        
+        const searchTerm = searchInputEl ? searchInputEl.value.toLowerCase() : '';
+        const typeFilter = typeFilterEl ? typeFilterEl.value : '';
+        const statusFilter = statusFilterEl ? statusFilterEl.value : '';
+        const timeFilter = timeFilterEl ? timeFilterEl.value : '';
+        const ipFilter = ipFilterEl ? ipFilterEl.value : '';
         
         const rows = document.querySelectorAll('#logsTable tbody tr');
         
@@ -591,8 +612,11 @@
     // Real-time stats (mock data)
     function updateRealTimeStats() {
         // This would be implemented with actual AJAX calls
-        document.getElementById('downloadsLastHour').textContent = Math.floor(Math.random() * 50) + 10;
-        document.getElementById('uniqueUsersLastHour').textContent = Math.floor(Math.random() * 20) + 5;
+        const downloadsEl = document.getElementById('downloadsLastHour');
+        const uniqueUsersEl = document.getElementById('uniqueUsersLastHour');
+        
+        if (downloadsEl) downloadsEl.textContent = Math.floor(Math.random() * 50) + 10;
+        if (uniqueUsersEl) uniqueUsersEl.textContent = Math.floor(Math.random() * 20) + 5;
         
         const popularFiles = document.getElementById('popularFiles');
         const files = ['update_1.0.0.3.zip', 'Launcher.exe', 'config.xml'];

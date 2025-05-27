@@ -47,7 +47,7 @@
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-success">
-                    {% set total_size = updates | sum(attribute='file_size') %}
+                    {% set total_size = updates | selectattr('file_size') | map(attribute='file_size') | sum %}
                     {{ "%.1f"|format(total_size / 1024 / 1024) if total_size else '0' }} MB
                 </h5>
                 <p class="card-text">Tamaño Total</p>
@@ -92,7 +92,7 @@
             </button>
         </div>
     </div>
-    
+
     <div class="card-body p-0">
         {% if updates %}
             <div class="table-responsive">
@@ -198,21 +198,28 @@
                                             title="Ver detalles">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    
+
                                     <button type="button" 
                                             class="btn btn-outline-success"
                                             onclick="downloadUpdate('{{ update.filename }}')"
                                             title="Descargar">
                                         <i class="bi bi-download"></i>
                                     </button>
-                                    
+                                    <form method="POST" action="{{ url_for('admin.delete_update', update_id=update.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger ms-1" 
+                                                onclick="return confirm('¿Eliminar el paquete de actualización para {{ update.version.version }}? Esta acción no se puede deshacer.')"
+                                                title="Eliminar paquete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+
                                     <button type="button" 
                                             class="btn btn-outline-info"
                                             onclick="testUpdate('{{ update.filename }}')"
                                             title="Probar descarga">
                                         <i class="bi bi-play-circle"></i>
                                     </button>
-                                    
+
                                     <div class="btn-group btn-group-sm" role="group">
                                         <button type="button" 
                                                 class="btn btn-outline-secondary dropdown-toggle" 
@@ -283,10 +290,10 @@
                                     {{ update.version.version }}
                                 </span>
                             </dd>
-                            
+
                             <dt class="col-sm-5">Archivo:</dt>
                             <dd class="col-sm-7"><code>{{ update.filename }}</code></dd>
-                            
+
                             <dt class="col-sm-5">Tamaño:</dt>
                             <dd class="col-sm-7">
                                 {% if update.file_size %}
@@ -296,7 +303,7 @@
                                     <span class="text-muted">No calculado</span>
                                 {% endif %}
                             </dd>
-                            
+
                             <dt class="col-sm-5">Estado:</dt>
                             <dd class="col-sm-7">
                                 {% if update.file_path and update.file_path | is_file_exists %}
@@ -307,7 +314,7 @@
                             </dd>
                         </dl>
                     </div>
-                    
+
                     <div class="col-md-6">
                         <h6 class="fw-bold">Detalles Técnicos</h6>
                         <dl class="row">
@@ -326,15 +333,15 @@
                                     <span class="text-muted">No calculado</span>
                                 {% endif %}
                             </dd>
-                            
+
                             <dt class="col-sm-5">Ruta:</dt>
                             <dd class="col-sm-7">
                                 <small class="text-muted">{{ update.file_path if update.file_path else 'No especificada' }}</small>
                             </dd>
-                            
+
                             <dt class="col-sm-5">Creado:</dt>
                             <dd class="col-sm-7">{{ update.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
-                            
+
                             <dt class="col-sm-5">Subido por:</dt>
                             <dd class="col-sm-7">
                                 {% if update.uploaded_by %}
@@ -346,7 +353,7 @@
                         </dl>
                     </div>
                 </div>
-                
+
                 {% if update.version.release_notes %}
                 <hr>
                 <h6 class="fw-bold">Notas de la Versión</h6>
@@ -354,7 +361,7 @@
                     {{ update.version.release_notes | nl2br | safe }}
                 </div>
                 {% endif %}
-                
+
                 <hr>
                 <h6 class="fw-bold">URL de Descarga</h6>
                 <div class="input-group">
@@ -392,11 +399,11 @@
     function downloadUpdate(filename) {
         window.open(`/Launcher/updates/${filename}`, '_blank');
     }
-    
+
     // Test update download
     function testUpdate(filename) {
         const testUrl = `/Launcher/updates/${filename}`;
-        
+
         fetch(testUrl, { method: 'HEAD' })
             .then(response => {
                 if (response.ok) {
@@ -409,7 +416,7 @@
                 showAlert('danger', `❌ Error de conexión: ${error.message}`);
             });
     }
-    
+
     // Delete update
     function deleteUpdate(updateId, filename) {
         if (confirm(`¿Eliminar el paquete de actualización "${filename}"? Esta acción no se puede deshacer.`)) {
@@ -418,58 +425,58 @@
             showAlert('info', 'Función de eliminación no implementada en el frontend');
         }
     }
-    
+
     // Regenerate hash for specific update
     function regenerateHash(updateId) {
         showAlert('info', 'Regenerando hash MD5...');
-        
+
         // Here you would implement the hash regeneration
         setTimeout(() => {
             showAlert('success', 'Hash MD5 regenerado exitosamente');
         }, 2000);
     }
-    
+
     // Validate update integrity
     function validateUpdate(updateId) {
         showAlert('info', 'Validando integridad del archivo...');
-        
+
         // Here you would implement the validation
         setTimeout(() => {
             showAlert('success', 'Archivo validado correctamente');
         }, 1500);
     }
-    
+
     // Regenerate all hashes
     function regenerateAll() {
         if (confirm('¿Regenerar todos los hashes MD5? Esto puede tomar unos minutos.')) {
             showAlert('info', 'Regenerando todos los hashes...');
-            
+
             // Here you would implement bulk hash regeneration
             setTimeout(() => {
                 showAlert('success', 'Todos los hashes han sido regenerados');
             }, 3000);
         }
     }
-    
+
     // Validate all updates
     function validateAll() {
         showAlert('info', 'Validando integridad de todos los archivos...');
-        
+
         // Here you would implement bulk validation
         setTimeout(() => {
             showAlert('success', 'Todos los archivos han sido validados');
         }, 2500);
     }
-    
+
     // Download all updates
     function downloadAll() {
         const updates = document.querySelectorAll('tbody tr');
-        
+
         if (updates.length === 0) {
             showAlert('warning', 'No hay paquetes para descargar');
             return;
         }
-        
+
         if (confirm(`¿Descargar todos los ${updates.length} paquetes de actualización?`)) {
             updates.forEach((row, index) => {
                 const filename = row.querySelector('code').textContent;
@@ -477,28 +484,28 @@
                     downloadUpdate(filename);
                 }, index * 1000); // Delay between downloads
             });
-            
+
             showAlert('info', `Iniciando descarga de ${updates.length} archivos...`);
         }
     }
-    
+
     // Generate update sequence
     function generateUpdateSequence() {
         showAlert('info', 'Generando secuencia de actualización...');
-        
+
         // Here you would implement update sequence generation
         setTimeout(() => {
             showAlert('success', 'Secuencia de actualización generada');
         }, 2000);
     }
-    
+
     // Copy to clipboard
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
             showAlert('success', 'Copiado al portapapeles');
         });
     }
-    
+
     // Show alert helper
     function showAlert(type, message) {
         const alertDiv = document.createElement('div');
@@ -508,9 +515,9 @@
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        
+
         document.body.appendChild(alertDiv);
-        
+
         // Auto remove after 5 seconds
         setTimeout(() => {
             if (alertDiv.parentNode) {
@@ -519,7 +526,7 @@
             }
         }, 5000);
     }
-    
+
     // Initialize tooltips
     document.addEventListener('DOMContentLoaded', function() {
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

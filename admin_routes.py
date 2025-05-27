@@ -237,9 +237,9 @@ def create_update():
                 flash('Debe seleccionar un archivo', 'error')
                 return render_template('admin/create_update.html')
             
-            if not allowed_file(update_file.filename, {'zip'}):
+            if not update_file.filename.lower().endswith('.zip'):
                 flash('Solo se permiten archivos ZIP', 'error')
-                return render_template('admin/create_update.html')
+                return render_template('admin/create_update.html', versions=GameVersion.query.order_by(GameVersion.version.desc()).all())
             
             version = GameVersion.query.get_or_404(version_id)
             filename = f"update_{version.version}.zip"
@@ -250,7 +250,8 @@ def create_update():
             update_file.save(file_path)
             
             # Calcular MD5 y tamaño
-            md5_hash = calculate_md5(file_path)
+            from utils import calculate_file_hash
+            md5_hash = calculate_file_hash(file_path, 'md5')
             file_size = os.path.getsize(file_path)
             
             # Verificar si ya existe un paquete para esta versión
@@ -440,6 +441,215 @@ def settings():
     """Configuración del servidor"""
     settings = ServerSettings.query.all()
     return render_template('admin/settings.html', settings=settings)
+
+@admin_bp.route('/versions/<int:version_id>/delete', methods=['POST'])
+@login_required
+def delete_version(version_id):
+    """Eliminar versión"""
+    try:
+        version = GameVersion.query.get_or_404(version_id)
+        
+        # Verificar que no sea la versión actual
+        if version.is_latest:
+            flash('No se puede eliminar la versión actual', 'error')
+            return redirect(url_for('admin.versions'))
+        
+        # Eliminar archivos asociados
+        for game_file in version.files:
+            file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'files', game_file.filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            db.session.delete(game_file)
+        
+        # Eliminar paquetes de actualización asociados
+        for update_package in version.update_packages:
+            if os.path.exists(update_package.file_path):
+                os.remove(update_package.file_path)
+            db.session.delete(update_package)
+        
+        # Eliminar la versión
+        db.session.delete(version)
+        db.session.commit()
+        
+        flash(f'Versión {version.version} eliminada exitosamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar versión: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.versions'))
+
+@admin_bp.route('/files/<int:file_id>/delete', methods=['POST'])
+@login_required
+def delete_file(file_id):
+    """Eliminar archivo individual"""
+    try:
+        game_file = GameFile.query.get_or_404(file_id)
+        filename = game_file.filename
+        
+        # Eliminar archivo físico
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'files', game_file.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            current_app.logger.info(f'Archivo físico eliminado: {file_path}')
+        else:
+            current_app.logger.warning(f'Archivo físico no encontrado: {file_path}')
+        
+        # Eliminar registro de la base de datos
+        db.session.delete(game_file)
+        db.session.commit()
+        
+        current_app.logger.info(f'Archivo {filename} eliminado exitosamente por usuario {current_user.username}')
+        flash(f'Archivo {filename} eliminado exitosamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error al eliminar archivo {file_id}: {str(e)}')
+        flash(f'Error al eliminar archivo: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.files'))
+
+@admin_bp.route('/files/delete_selected', methods=['POST'])
+@login_required
+def delete_selected_files():
+    """Eliminar archivos seleccionados"""
+    try:
+        file_ids = request.form.getlist('file_ids')
+        if not file_ids:
+            flash('No se seleccionaron archivos para eliminar', 'warning')
+            return redirect(url_for('admin.files'))
+        
+        deleted_count = 0
+        errors = []
+        
+        for file_id in file_ids:
+            try:
+                game_file = GameFile.query.get(file_id)
+                if game_file:
+                    filename = game_file.filename
+                    
+                    # Eliminar archivo físico
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'files', game_file.filename)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        current_app.logger.info(f'Archivo físico eliminado: {file_path}')
+                    else:
+                        current_app.logger.warning(f'Archivo físico no encontrado: {file_path}')
+                    
+                    # Eliminar registro de la base de datos
+                    db.session.delete(game_file)
+                    deleted_count += 1
+                    current_app.logger.info(f'Archivo {filename} eliminado exitosamente')
+                else:
+                    errors.append(f'Archivo con ID {file_id} no encontrado')
+            except Exception as e:
+                errors.append(f'Error eliminando archivo ID {file_id}: {str(e)}')
+                current_app.logger.error(f'Error eliminando archivo ID {file_id}: {str(e)}')
+        
+        db.session.commit()
+        
+        if deleted_count > 0:
+            flash(f'{deleted_count} archivo(s) eliminado(s) exitosamente', 'success')
+        
+        if errors:
+            for error in errors:
+                flash(error, 'error')
+                
+        current_app.logger.info(f'{deleted_count} archivos eliminados por usuario {current_user.username}')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Error general al eliminar archivos: {str(e)}')
+        flash(f'Error al eliminar archivos: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.files'))
+
+@admin_bp.route('/updates/<int:update_id>/delete', methods=['POST'])
+@login_required
+def delete_update(update_id):
+    """Eliminar paquete de actualización"""
+    try:
+        update_package = UpdatePackage.query.get_or_404(update_id)
+        
+        # Eliminar archivo físico
+        if os.path.exists(update_package.file_path):
+            os.remove(update_package.file_path)
+        
+        # Eliminar registro de la base de datos
+        db.session.delete(update_package)
+        db.session.commit()
+        
+        flash(f'Paquete de actualización {update_package.filename} eliminado exitosamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar paquete: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.updates'))
+
+@admin_bp.route('/messages/<int:message_id>/delete', methods=['POST'])
+@login_required
+def delete_message(message_id):
+    """Eliminar mensaje"""
+    try:
+        message = NewsMessage.query.get_or_404(message_id)
+        db.session.delete(message)
+        db.session.commit()
+        
+        flash('Mensaje eliminado exitosamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar mensaje: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.messages'))
+
+@admin_bp.route('/messages/delete_selected', methods=['POST'])
+@login_required
+def delete_selected_messages():
+    """Eliminar mensajes seleccionados"""
+    try:
+        message_ids = request.form.getlist('message_ids')
+        if not message_ids:
+            flash('No se seleccionaron mensajes para eliminar', 'warning')
+            return redirect(url_for('admin.messages'))
+        
+        deleted_count = 0
+        for message_id in message_ids:
+            message = NewsMessage.query.get(message_id)
+            if message:
+                db.session.delete(message)
+                deleted_count += 1
+        
+        db.session.commit()
+        flash(f'{deleted_count} mensaje(s) eliminado(s) exitosamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar mensajes: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.messages'))
+
+@admin_bp.route('/launcher/<int:launcher_id>/delete', methods=['POST'])
+@login_required
+def delete_launcher(launcher_id):
+    """Eliminar versión del launcher"""
+    try:
+        launcher = LauncherVersion.query.get_or_404(launcher_id)
+        
+        # Verificar que no sea la versión actual
+        if launcher.is_current:
+            flash('No se puede eliminar la versión actual del launcher', 'error')
+            return redirect(url_for('admin.launcher_versions'))
+        
+        # Eliminar archivo físico
+        if os.path.exists(launcher.file_path):
+            os.remove(launcher.file_path)
+        
+        # Eliminar registro de la base de datos
+        db.session.delete(launcher)
+        db.session.commit()
+        
+        flash(f'Launcher versión {launcher.version} eliminado exitosamente', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar launcher: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.launcher_versions'))
 
 @admin_bp.route('/api/stats')
 @login_required

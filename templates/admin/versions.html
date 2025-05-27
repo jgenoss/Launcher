@@ -193,10 +193,13 @@
                                             {% endif %}
                                             <li><hr class="dropdown-divider"></li>
                                             <li>
-                                                <a class="dropdown-item text-danger" href="#" 
-                                                   onclick="return confirm('¿Eliminar la versión {{ version.version }}? Esta acción no se puede deshacer.')">
-                                                    <i class="bi bi-trash me-2"></i>Eliminar
-                                                </a>
+                                                <form method="POST" action="{{ url_for('admin.delete_version', version_id=version.id) }}" style="display: inline;">
+                                                    <button type="submit" class="dropdown-item text-danger" 
+                                                            onclick="return confirm('¿Eliminar la versión {{ version.version }}? Esta acción no se puede deshacer.')" 
+                                                            {% if version.is_latest %}disabled title="No se puede eliminar la versión actual"{% endif %}>
+                                                        <i class="bi bi-trash me-2"></i>Eliminar
+                                                    </button>
+                                                </form>
                                             </li>
                                         </ul>
                                     </div>

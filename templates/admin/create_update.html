@@ -76,7 +76,7 @@
                                 El archivo ZIP debe contener todos los archivos de la actualización<br>
                                 con la estructura de directorios correcta
                             </p>
-                            <button type="button" class="btn btn-primary" onclick="document.getElementById('updateFile').click()">
+                            <button type="button" class="btn btn-primary" id="selectFileBtn">
                                 <i class="bi bi-folder2-open me-2"></i>Seleccionar Archivo ZIP
                             </button>
                         </div>
@@ -90,12 +90,13 @@
                     
                     <!-- File Info -->
                     <div id="fileInfo" class="mt-4" style="display: none;">
-                        <div class="alert alert-info">
+                        <div class="alert alert-success">
                             <div class="d-flex align-items-center">
-                                <i class="bi bi-info-circle me-3"></i>
+                                <i class="bi bi-check-circle me-3"></i>
                                 <div class="flex-grow-1">
-                                    <strong id="fileName"></strong><br>
-                                    <small id="fileSize"></small>
+                                    <strong>Archivo seleccionado:</strong><br>
+                                    <span id="fileName" class="text-primary"></span><br>
+                                    <small id="fileSize" class="text-muted"></small>
                                 </div>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFile()">
                                     <i class="bi bi-x"></i> Cambiar
@@ -269,76 +270,205 @@
 
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.file-upload-area:hover {
+    border-color: #0d6efd;
+    background-color: #f8f9fa;
+}
+
+.file-upload-area.dragover {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+}
+
+.file-upload-area.file-selected {
+    border-color: #198754;
+    background-color: #f8fff9;
+}
+
+.file-upload-area.file-selected h5 {
+    color: #198754;
+}
+
+.update-guidelines ul li {
+    margin-bottom: 0.5rem;
+}
+
+.example-structure {
+    background-color: #f8f9fa;
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
     let selectedFile = null;
     
+    // Function to handle file selection button click
+    function selectFileButtonClick() {
+        console.log('Select file button clicked');
+        const fileInput = document.getElementById('updateFile');
+        if (fileInput) {
+            console.log('File input found, triggering click');
+            // Force focus and click
+            fileInput.focus();
+            fileInput.click();
+        } else {
+            console.error('File input not found');
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM Content Loaded - Initializing create update form...');
+        
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('updateFile');
         const versionSelect = document.getElementById('versionSelect');
         const submitBtn = document.getElementById('submitBtn');
         const form = document.getElementById('updateForm');
         
-        // File upload area events
-        uploadArea.addEventListener('click', () => fileInput.click());
+        // Check if required elements exist and log their status
+        console.log('Upload area found:', !!uploadArea);
+        console.log('File input found:', !!fileInput);
+        console.log('Version select found:', !!versionSelect);
+        console.log('Submit button found:', !!submitBtn);
+        console.log('Form found:', !!form);
         
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
+        // Add event listeners only to existing elements
+        if (uploadArea && fileInput) {
+            // Remove any existing event listeners
+            uploadArea.replaceWith(uploadArea.cloneNode(true));
+            const newUploadArea = document.getElementById('uploadArea');
             
-            const files = Array.from(e.dataTransfer.files);
-            const zipFile = files.find(file => file.name.toLowerCase().endsWith('.zip'));
+            // File upload area click with proper event handling
+            newUploadArea.addEventListener('click', function(e) {
+                // Don't prevent default for button clicks
+                if (e.target.tagName !== 'BUTTON') {
+                    e.preventDefault();
+                }
+                e.stopPropagation();
+                console.log('Upload area clicked - triggering file input');
+                
+                // Create a new click event to ensure it works
+                setTimeout(function() {
+                    fileInput.click();
+                }, 10);
+            });
             
-            if (zipFile) {
-                handleFileSelection(zipFile);
-            } else {
-                alert('Por favor selecciona un archivo ZIP válido');
-            }
-        });
+            // Drag and drop events
+            newUploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                newUploadArea.classList.add('dragover');
+            });
+            
+            newUploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                newUploadArea.classList.remove('dragover');
+            });
+            
+            newUploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                newUploadArea.classList.remove('dragover');
+                
+                const files = Array.from(e.dataTransfer.files);
+                const zipFile = files.find(file => file.name.toLowerCase().endsWith('.zip'));
+                
+                if (zipFile) {
+                    handleFileSelection(zipFile);
+                } else {
+                    alert('Por favor selecciona un archivo ZIP válido');
+                }
+            });
+        }
         
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFileSelection(e.target.files[0]);
-            }
-        });
+        // Button click handler
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        if (selectFileBtn && fileInput) {
+            selectFileBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Select file button clicked via event listener');
+                fileInput.click();
+            });
+        }
         
-        // Version selection change
-        versionSelect.addEventListener('change', function() {
-            if (this.value) {
-                loadVersionInfo(this.value);
+        if (fileInput) {
+            // File input change
+            fileInput.addEventListener('change', function(e) {
+                console.log('File input changed');
+                if (e.target.files.length > 0) {
+                    handleFileSelection(e.target.files[0]);
+                }
+            });
+        }
+        
+        if (versionSelect) {
+            // Version selection change
+            versionSelect.addEventListener('change', function() {
+                const versionInfoCard = document.getElementById('versionInfoCard');
+                if (this.value) {
+                    loadVersionInfo(this.value);
+                } else {
+                    if (versionInfoCard) {
+                        versionInfoCard.style.display = 'none';
+                    }
+                }
                 updateSubmitButton();
-            } else {
-                document.getElementById('versionInfoCard').style.display = 'none';
-                updateSubmitButton();
-            }
-        });
+            });
+        }
         
-        // Form submission
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitUpdate();
-        });
+        if (form) {
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Form submission prevented, calling submitUpdate');
+                submitUpdate();
+            });
+        }
+        
+        if (submitBtn) {
+            // Direct button click handler as backup
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Submit button clicked directly');
+                if (!submitBtn.disabled) {
+                    submitUpdate();
+                }
+            });
+        }
         
         // Load version info if pre-selected
         const urlParams = new URLSearchParams(window.location.search);
         const versionId = urlParams.get('version_id');
-        if (versionId) {
+        if (versionId && versionSelect) {
             versionSelect.value = versionId;
             loadVersionInfo(versionId);
         }
+        
+        // Initial button state update
+        updateSubmitButton();
+        
+        console.log('Initialization completed successfully');
     });
     
     function handleFileSelection(file) {
+        console.log('File selected:', file.name, 'Size:', file.size);
+        
         if (!file.name.toLowerCase().endsWith('.zip')) {
             alert('Solo se permiten archivos ZIP');
             return;
@@ -346,18 +476,66 @@
         
         selectedFile = file;
         
-        // Show file info
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileSize').textContent = formatFileSize(file.size);
-        document.getElementById('fileInfo').style.display = 'block';
+        // Update the file input to reflect the selection
+        const fileInput = document.getElementById('updateFile');
+        if (fileInput && fileInput.files.length === 0) {
+            // Create a new FileList with our file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+        }
+        
+        // Show file info with better error handling
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const fileInfo = document.getElementById('fileInfo');
+        
+        console.log('Looking for elements:', {
+            fileName: !!fileName,
+            fileSize: !!fileSize,
+            fileInfo: !!fileInfo
+        });
+        
+        if (fileName) {
+            fileName.textContent = file.name;
+            console.log('File name set to:', file.name);
+        } else {
+            console.error('fileName element not found in DOM');
+        }
+        
+        if (fileSize) {
+            const sizeText = formatFileSize(file.size);
+            fileSize.textContent = sizeText;
+            console.log('File size set to:', sizeText);
+        } else {
+            console.error('fileSize element not found in DOM');
+        }
+        
+        if (fileInfo) {
+            fileInfo.style.display = 'block';
+            console.log('File info shown');
+        } else {
+            console.error('fileInfo element not found in DOM');
+        }
+        
+        // Also update the upload area to show file is selected
+        const uploadArea = document.getElementById('uploadArea');
+        if (uploadArea) {
+            uploadArea.classList.add('file-selected');
+            uploadArea.querySelector('.upload-content h5').textContent = `Archivo seleccionado: ${file.name}`;
+        }
         
         updateSubmitButton();
+        console.log('File selection completed successfully');
     }
     
     function clearFile() {
         selectedFile = null;
-        document.getElementById('updateFile').value = '';
-        document.getElementById('fileInfo').style.display = 'none';
+        const fileInput = document.getElementById('updateFile');
+        const fileInfo = document.getElementById('fileInfo');
+        
+        if (fileInput) fileInput.value = '';
+        if (fileInfo) fileInfo.style.display = 'none';
         updateSubmitButton();
     }
     
@@ -372,29 +550,33 @@
         const versionInfoCard = document.getElementById('versionInfoCard');
         const versionInfo = document.getElementById('versionInfo');
         
-        versionInfoCard.style.display = 'block';
-        versionInfo.innerHTML = `
-            <dl class="row mb-0">
-                <dt class="col-sm-5">Versión:</dt>
-                <dd class="col-sm-7">
-                    <span class="badge ${isLatest ? 'bg-success' : 'bg-secondary'}">${version}</span>
-                </dd>
-                <dt class="col-sm-5">Estado:</dt>
-                <dd class="col-sm-7">${isLatest ? 'Actual' : 'Archivada'}</dd>
-                <dt class="col-sm-5">Archivo sugerido:</dt>
-                <dd class="col-sm-7"><code>update_${version}.zip</code></dd>
-            </dl>
-            ${notes ? `
-                <hr class="my-3">
-                <h6 class="fw-bold">Notas:</h6>
-                <div class="bg-light p-2 rounded small">${notes}</div>
-            ` : ''}
-        `;
+        if (versionInfoCard && versionInfo) {
+            versionInfoCard.style.display = 'block';
+            versionInfo.innerHTML = `
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Versión:</dt>
+                    <dd class="col-sm-7">
+                        <span class="badge ${isLatest ? 'bg-success' : 'bg-secondary'}">${version}</span>
+                    </dd>
+                    <dt class="col-sm-5">Estado:</dt>
+                    <dd class="col-sm-7">${isLatest ? 'Actual' : 'Archivada'}</dd>
+                    <dt class="col-sm-5">Archivo sugerido:</dt>
+                    <dd class="col-sm-7"><code>update_${version}.zip</code></dd>
+                </dl>
+                ${notes ? `
+                    <hr class="my-3">
+                    <h6 class="fw-bold">Notas:</h6>
+                    <div class="bg-light p-2 rounded small">${notes}</div>
+                ` : ''}
+            `;
+        }
     }
     
     function updateSubmitButton() {
         const submitBtn = document.getElementById('submitBtn');
         const versionSelect = document.getElementById('versionSelect');
+        
+        if (!submitBtn || !versionSelect) return;
         
         const hasFile = selectedFile !== null;
         const hasVersion = versionSelect.value !== '';
@@ -403,54 +585,82 @@
     }
     
     async function submitUpdate() {
+        console.log('submitUpdate called');
+        console.log('Selected file:', selectedFile);
+        
         if (!selectedFile) {
             alert('Selecciona un archivo ZIP');
             return;
         }
         
-        const versionId = document.getElementById('versionSelect').value;
-        if (!versionId) {
+        const versionSelect = document.getElementById('versionSelect');
+        if (!versionSelect || !versionSelect.value) {
             alert('Selecciona una versión');
             return;
         }
         
-        // Show progress
+        const versionId = versionSelect.value;
+        console.log('Version ID:', versionId);
+        
+        // Show progress with null checks
         const progressCard = document.getElementById('progressCard');
         const uploadProgress = document.getElementById('uploadProgress');
         const uploadStatus = document.getElementById('uploadStatus');
         const uploadDetails = document.getElementById('uploadDetails');
         const submitBtn = document.getElementById('submitBtn');
         
-        progressCard.style.display = 'block';
-        submitBtn.disabled = true;
+        if (progressCard) progressCard.style.display = 'block';
+        if (submitBtn) submitBtn.disabled = true;
         
         // Show loading on button
-        const btnText = submitBtn.querySelector('.btn-text');
-        const spinner = submitBtn.querySelector('.spinner-border');
-        btnText.innerHTML = '<i class="bi bi-hourglass"></i> Procesando...';
-        spinner.classList.remove('d-none');
+        const btnText = submitBtn ? submitBtn.querySelector('.btn-text') : null;
+        const spinner = submitBtn ? submitBtn.querySelector('.spinner-border') : null;
+        
+        if (btnText) btnText.innerHTML = '<i class="bi bi-hourglass"></i> Procesando...';
+        if (spinner) spinner.classList.remove('d-none');
         
         try {
             const formData = new FormData();
             formData.append('version_id', versionId);
             formData.append('update_file', selectedFile);
-            formData.append('overwrite_existing', document.getElementById('overwriteExisting').checked);
-            formData.append('validate_after_upload', document.getElementById('validateAfterUpload').checked);
-            formData.append('generate_md5', document.getElementById('generateMD5').checked);
-            formData.append('update_json', document.getElementById('updateJSON').checked);
+            
+            console.log('FormData created with:', {
+                version_id: versionId,
+                update_file: selectedFile.name
+            });
+            
+            const checkboxes = [
+                'overwriteExisting',
+                'validateAfterUpload', 
+                'generateMD5',
+                'updateJSON'
+            ];
+            
+            checkboxes.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    const fieldName = id.replace(/([A-Z])/g, '_$1').toLowerCase();
+                    formData.append(fieldName, checkbox.checked);
+                    console.log(`Checkbox ${fieldName}:`, checkbox.checked);
+                }
+            });
             
             // Simulate upload progress
             let progress = 0;
-            uploadStatus.textContent = 'Subiendo archivo...';
-            uploadDetails.textContent = `Archivo: ${selectedFile.name} (${formatFileSize(selectedFile.size)})`;
+            if (uploadStatus) uploadStatus.textContent = 'Subiendo archivo...';
+            if (uploadDetails) uploadDetails.textContent = `Archivo: ${selectedFile.name} (${formatFileSize(selectedFile.size)})`;
             
             const progressInterval = setInterval(() => {
                 progress += Math.random() * 15;
                 if (progress > 85) progress = 85;
                 
-                uploadProgress.style.width = `${progress}%`;
-                uploadProgress.textContent = `${Math.round(progress)}%`;
+                if (uploadProgress) {
+                    uploadProgress.style.width = `${progress}%`;
+                    uploadProgress.textContent = `${Math.round(progress)}%`;
+                }
             }, 300);
+            
+            console.log('Sending request to:', window.location.href);
             
             // Submit form
             const response = await fetch(window.location.href, {
@@ -459,31 +669,49 @@
             });
             
             clearInterval(progressInterval);
+            console.log('Response status:', response.status);
             
             if (response.ok) {
                 // Complete progress
-                uploadProgress.style.width = '100%';
-                uploadProgress.textContent = '100%';
-                uploadStatus.innerHTML = '<i class="bi bi-check-circle text-success me-2"></i>¡Paquete creado exitosamente!';
-                uploadDetails.innerHTML = 'Redirigiendo...';
+                if (uploadProgress) {
+                    uploadProgress.style.width = '100%';
+                    uploadProgress.textContent = '100%';
+                    uploadProgress.classList.remove('progress-bar-animated');
+                    uploadProgress.classList.add('bg-success');
+                }
+                if (uploadStatus) {
+                    uploadStatus.innerHTML = '<i class="bi bi-check-circle text-success me-2"></i>¡Paquete creado exitosamente!';
+                }
+                if (uploadDetails) {
+                    uploadDetails.innerHTML = 'Redirigiendo a la página de actualizaciones...';
+                }
                 
                 setTimeout(() => {
-                    window.location.href = '{{ url_for("admin.updates") }}';
+                    window.location.href = '/admin/updates';
                 }, 2000);
             } else {
+                const responseText = await response.text();
+                console.error('Server response:', responseText);
                 throw new Error(`Error del servidor: ${response.status}`);
             }
             
         } catch (error) {
-            uploadProgress.classList.remove('progress-bar-animated');
-            uploadProgress.classList.add('bg-danger');
-            uploadStatus.innerHTML = `<i class="bi bi-exclamation-triangle text-danger me-2"></i>Error: ${error.message}`;
-            uploadDetails.textContent = 'La subida ha fallado';
+            console.error('Submit error:', error);
+            if (uploadProgress) {
+                uploadProgress.classList.remove('progress-bar-animated');
+                uploadProgress.classList.add('bg-danger');
+            }
+            if (uploadStatus) {
+                uploadStatus.innerHTML = `<i class="bi bi-exclamation-triangle text-danger me-2"></i>Error: ${error.message}`;
+            }
+            if (uploadDetails) {
+                uploadDetails.textContent = 'La subida ha fallado. Revisa la consola para más detalles.';
+            }
             
             // Restore button
-            btnText.innerHTML = '<i class="bi bi-upload"></i> Crear Paquete de Actualización';
-            spinner.classList.add('d-none');
-            submitBtn.disabled = false;
+            if (btnText) btnText.innerHTML = '<i class="bi bi-upload"></i> Crear Paquete de Actualización';
+            if (spinner) spinner.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
     
