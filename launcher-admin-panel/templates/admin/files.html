@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+
+{% block title %}Archivos del Juego - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-file-earmark me-2"></i>Archivos del Juego
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin.upload_files') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-cloud-upload"></i> Subir Archivos
+            </a>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-funnel"></i> Filtros
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('admin.files') }}">Todos los archivos</a></li>
+                <li><hr class="dropdown-divider"></li>
+                {% for version in versions %}
+                <li>
+                    <a class="dropdown-item {% if current_version_id == version.id %}active{% endif %}" 
+                       href="{{ url_for('admin.files', version_id=version.id) }}">
+                        {{ version.version }}
+                        {% if version.is_latest %}<span class="badge bg-success ms-1">Actual</span>{% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- File Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ files.total }}</h5>
+                <p class="card-text">Total de Archivos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {% set total_size = files.items | sum(attribute='file_size') %}
+                    {{ "%.1f"|format(total_size / 1024 / 1024) if total_size else '0' }} MB
+                </h5>
+                <p class="card-text">Tamaño Total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {% if current_version_id %}
+                        {{ files.items | selectattr('version_id', 'equalto', current_version_id) | list | length }}
+                    {% else %}
+                        {{ versions | length }}
+                    {% endif %}
+                </h5>
+                <p class="card-text">
+                    {% if current_version_id %}Archivos Filtrados{% else %}Versiones{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    {{ files.items | selectattr('md5_hash') | list | length }}
+                </h5>
+                <p class="card-text">Con Hash MD5</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Buscar archivos por nombre, ruta o hash..."
+                           id="searchInput">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="extensionFilter">
+                    <option value="">Todas las extensiones</option>
+                    <option value=".exe">Ejecutables (.exe)</option>
+                    <option value=".dll">Librerías (.dll)</option>
+                    <option value=".xml">Configuración (.xml)</option>
+                    <option value=".json">JSON (.json)</option>
+                    <option value=".txt">Texto (.txt)</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="sizeFilter">
+                    <option value="">Todos los tamaños</option>
+                    <option value="small">Pequeños (&lt; 1 MB)</option>
+                    <option value="medium">Medianos (1-10 MB)</option>
+                    <option value="large">Grandes (&gt; 10 MB)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Files Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list me-2"></i>
+            Lista de Archivos
+            {% if current_version_id %}
+                <span class="badge bg-primary ms-2">
+                    Versión: {{ versions | selectattr('id', 'equalto', current_version_id) | first | attr('version') }}
+                </span>
+            {% endif %}
+        </h5>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" onclick="selectAll()">
+                <i class="bi bi-check-all"></i> Seleccionar Todo
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="deleteSelected()" disabled id="deleteBtn">
+                <i class="bi bi-trash"></i> Eliminar Seleccionados
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if files.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="filesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" style="width: 50px;">
+                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                            </th>
+                            <th scope="col">Archivo</th>
+                            <th scope="col">Ruta Relativa</th>
+                            <th scope="col">Versión</th>
+                            <th scope="col">Tamaño</th>
+                            <th scope="col">MD5 Hash</th>
+                            <th scope="col">Actualizado</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in files.items %}
+                        <tr data-filename="{{ file.filename.lower() }}" 
+                            data-path="{{ file.relative_path.lower() }}"
+                            data-hash="{{ file.md5_hash.lower() if file.md5_hash else '' }}"
+                            data-size="{{ file.file_size or 0 }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input file-checkbox" value="{{ file.id }}">
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="file-icon me-2">
+                                        {% set ext = file.filename.split('.')[-1].lower() %}
+                                        {% if ext == 'exe' %}
+                                            <i class="bi bi-app text-primary"></i>
+                                        {% elif ext == 'dll' %}
+                                            <i class="bi bi-gear text-secondary"></i>
+                                        {% elif ext in ['xml', 'json'] %}
+                                            <i class="bi bi-code text-info"></i>
+                                        {% elif ext == 'txt' %}
+                                            <i class="bi bi-file-text text-success"></i>
+                                        {% else %}
+                                            <i class="bi bi-file-earmark text-muted"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ file.filename }}</strong>
+                                        <br>
+                                        <small class="text-muted">.{{ file.filename.split('.')[-1] }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <code class="small">{{ file.relative_path }}</code>
+                            </td>
+                            <td>
+                                {% if file.version %}
+                                    <span class="badge version-badge {% if file.version.is_latest %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ file.version.version }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">Sin versión</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if file.file_size %}
+                                    <span class="badge bg-light text-dark">
+                                        {% if file.file_size < 1024 %}
+                                            {{ file.file_size }} B
+                                        {% elif file.file_size < 1024 * 1024 %}
+                                            {{ "%.1f"|format(file.file_size / 1024) }} KB
+                                        {% else %}
+                                            {{ "%.1f"|format(file.file_size / 1024 / 1024) }} MB
+                                        {% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if file.md5_hash %}
+                                    <div class="hash-display">
+                                        <code class="small">{{ file.md5_hash[:12] }}...</code>
+                                        <button type="button" 
+                                                class="btn btn-link btn-sm p-0 ms-1" 
+                                                onclick="copyToClipboard('{{ file.md5_hash }}')"
+                                                title="Copiar hash completo">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No calculado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ file.updated_at.strftime('%d/%m/%Y') if file.updated_at else file.created_at.strftime('%d/%m/%Y') }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#fileModal{{ file.id }}"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-outline-success"
+                                            onclick="downloadFile('{{ file.filename }}')"
+                                            title="Descargar">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-outline-danger"
+                                            onclick="deleteFile({{ file.id }}, '{{ file.filename }}')"
+                                            title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if files.pages > 1 %}
+            <div class="card-footer">
+                <nav aria-label="File pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if files.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.files', page=files.prev_num, version_id=current_version_id) }}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in files.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != files.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.files', page=page_num, version_id=current_version_id) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if files.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.files', page=files.next_num, version_id=current_version_id) }}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                
+                <div class="text-center text-muted mt-2">
+                    <small>
+                        Mostrando {{ files.per_page * (files.page - 1) + 1 }} - 
+                        {{ files.per_page * files.page if files.page < files.pages else files.total }} 
+                        de {{ files.total }} archivos
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-file-earmark" style="font-size: 4rem; color: #dee2e6;"></i>
+                </div>
+                <h5 class="text-muted">No hay archivos</h5>
+                {% if current_version_id %}
+                    <p class="text-muted">No se han subido archivos para esta versión</p>
+                {% else %}
+                    <p class="text-muted">Sube tus primeros archivos del juego</p>
+                {% endif %}
+                <a href="{{ url_for('admin.upload_files') }}" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload me-2"></i>Subir Archivos
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- File Detail Modals -->
+{% for file in files.items %}
+<div class="modal fade" id="fileModal{{ file.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark me-2"></i>{{ file.filename }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Nombre:</dt>
+                    <dd class="col-sm-8"><code>{{ file.filename }}</code></dd>
+                    
+                    <dt class="col-sm-4">Ruta relativa:</dt>
+                    <dd class="col-sm-8"><code>{{ file.relative_path }}</code></dd>
+                    
+                    <dt class="col-sm-4">Versión:</dt>
+                    <dd class="col-sm-8">
+                        {% if file.version %}
+                            <span class="badge {% if file.version.is_latest %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ file.version.version }}
+                            </span>
+                        {% else %}
+                            <span class="text-muted">Sin versión</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Tamaño:</dt>
+                    <dd class="col-sm-8">
+                        {% if file.file_size %}
+                            {{ "%.2f"|format(file.file_size / 1024 / 1024) }} MB 
+                            ({{ "{:,}".format(file.file_size) }} bytes)
+                        {% else %}
+                            <span class="text-muted">No calculado</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">MD5 Hash:</dt>
+                    <dd class="col-sm-8">
+                        {% if file.md5_hash %}
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control font-monospace" 
+                                       value="{{ file.md5_hash }}" readonly id="hash{{ file.id }}">
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="copyToClipboard('{{ file.md5_hash }}')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        {% else %}
+                            <span class="text-muted">No calculado</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Creado:</dt>
+                    <dd class="col-sm-8">{{ file.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+                    
+                    <dt class="col-sm-4">Actualizado:</dt>
+                    <dd class="col-sm-8">
+                        {{ file.updated_at.strftime('%d/%m/%Y %H:%M:%S') if file.updated_at else 'Nunca' }}
+                    </dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" 
+                        class="btn btn-success"
+                        onclick="downloadFile('{{ file.filename }}')">
+                    <i class="bi bi-download me-1"></i>Descargar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search and filter functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        filterTable();
+    });
+    
+    document.getElementById('extensionFilter').addEventListener('change', function() {
+        filterTable();
+    });
+    
+    document.getElementById('sizeFilter').addEventListener('change', function() {
+        filterTable();
+    });
+    
+    function filterTable() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const extensionFilter = document.getElementById('extensionFilter').value;
+        const sizeFilter = document.getElementById('sizeFilter').value;
+        
+        const rows = document.querySelectorAll('#filesTable tbody tr');
+        
+        rows.forEach(row => {
+            const filename = row.dataset.filename;
+            const path = row.dataset.path;
+            const hash = row.dataset.hash;
+            const size = parseInt(row.dataset.size);
+            
+            let showRow = true;
+            
+            // Search filter
+            if (searchTerm && !filename.includes(searchTerm) && !path.includes(searchTerm) && !hash.includes(searchTerm)) {
+                showRow = false;
+            }
+            
+            // Extension filter
+            if (extensionFilter && !filename.endsWith(extensionFilter.toLowerCase())) {
+                showRow = false;
+            }
+            
+            // Size filter
+            if (sizeFilter) {
+                const sizeMB = size / 1024 / 1024;
+                if (sizeFilter === 'small' && sizeMB >= 1) showRow = false;
+                if (sizeFilter === 'medium' && (sizeMB < 1 || sizeMB > 10)) showRow = false;
+                if (sizeFilter === 'large' && sizeMB <= 10) showRow = false;
+            }
+            
+            row.style.display = showRow ? '' : 'none';
+        });
+        
+        updateVisibleCount();
+    }
+    
+    function updateVisibleCount() {
+        const visibleRows = document.querySelectorAll('#filesTable tbody tr:not([style*="display: none"])').length;
+        const totalRows = document.querySelectorAll('#filesTable tbody tr').length;
+        
+        // Update some counter if needed
+        console.log(`Showing ${visibleRows} of ${totalRows} files`);
+    }
+    
+    // Checkbox selection
+    document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+        selectAll();
+    });
+    
+    function selectAll() {
+        const mainCheckbox = document.getElementById('selectAllCheckbox');
+        const checkboxes = document.querySelectorAll('.file-checkbox');
+        const isChecked = mainCheckbox.checked;
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+        });
+        
+        updateDeleteButton();
+    }
+    
+    // Update delete button state
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('file-checkbox')) {
+            updateDeleteButton();
+        }
+    });
+    
+    function updateDeleteButton() {
+        const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+        const deleteBtn = document.getElementById('deleteBtn');
+        
+        deleteBtn.disabled = selectedCheckboxes.length === 0;
+        deleteBtn.innerHTML = selectedCheckboxes.length > 0 
+            ? `<i class="bi bi-trash"></i> Eliminar (${selectedCheckboxes.length})`
+            : '<i class="bi bi-trash"></i> Eliminar Seleccionados';
+    }
+    
+    // Delete selected files
+    function deleteSelected() {
+        const selectedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        if (selectedIds.length === 0) return;
+        
+        if (confirm(`¿Eliminar ${selectedIds.length} archivo(s) seleccionado(s)? Esta acción no se puede deshacer.`)) {
+            // Here you would implement the actual deletion
+            console.log('Deleting files:', selectedIds);
+            
+            // For now, just remove the rows
+            selectedCheckboxes.forEach(checkbox => {
+                checkbox.closest('tr').remove();
+            });
+            
+            updateDeleteButton();
+        }
+    }
+    
+    // Delete single file
+    function deleteFile(fileId, filename) {
+        if (confirm(`¿Eliminar el archivo "${filename}"? Esta acción no se puede deshacer.`)) {
+            // Here you would implement the actual deletion
+            console.log('Deleting file:', fileId);
+            
+            // For now, just remove the row
+            document.querySelector(`input[value="${fileId}"]`).closest('tr').remove();
+        }
+    }
+    
+    // Download file
+    function downloadFile(filename) {
+        window.open(`/Launcher/files/${filename}`, '_blank');
+    }
+    
+    // Copy to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Show success message
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed top-0 end-0 m-3';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-check-circle me-2"></i>Hash copiado al portapapeles
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', () => {
+                document.body.removeChild(toast);
+            });
+        });
+    }
+</script>
+{% endblock %}

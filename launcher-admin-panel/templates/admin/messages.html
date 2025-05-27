@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+
+{% block title %}Mensajes y Noticias - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-chat-dots me-2"></i>Mensajes y Noticias
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin.create_message') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle"></i> Nuevo Mensaje
+            </a>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-gear"></i> Acciones
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/api/message.json" target="_blank">
+                    <i class="bi bi-code me-2"></i>Ver JSON de Mensajes
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="toggleAllMessages()">
+                    <i class="bi bi-toggle-on me-2"></i>Alternar Todos
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="exportMessages()">
+                    <i class="bi bi-download me-2"></i>Exportar Mensajes
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Message Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ messages|length }}</h5>
+                <p class="card-text">Mensajes Totales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {{ messages | selectattr('is_active') | list | length }}
+                </h5>
+                <p class="card-text">Mensajes Activos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {{ messages | selectattr('type', 'equalto', 'Actualización') | list | length }}
+                </h5>
+                <p class="card-text">Actualizaciones</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    {{ messages | selectattr('type', 'equalto', 'Noticia') | list | length }}
+                </h5>
+                <p class="card-text">Noticias</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Buscar mensajes..."
+                           id="searchInput">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="typeFilter">
+                    <option value="">Todos los tipos</option>
+                    <option value="Actualización">Actualizaciones</option>
+                    <option value="Noticia">Noticias</option>
+                    <option value="Mantenimiento">Mantenimiento</option>
+                    <option value="Evento">Eventos</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter">
+                    <option value="">Todos los estados</option>
+                    <option value="active">Solo activos</option>
+                    <option value="inactive">Solo inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    <i class="bi bi-x-circle"></i> Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Messages Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list me-2"></i>Lista de Mensajes
+        </h5>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" onclick="previewInLauncher()">
+                <i class="bi bi-eye"></i> Vista Previa
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="activateSelected()" disabled id="activateBtn">
+                <i class="bi bi-toggle-on"></i> Activar
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="deleteSelected()" disabled id="deleteBtn">
+                <i class="bi bi-trash"></i> Eliminar
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if messages %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="messagesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" style="width: 50px;">
+                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                            </th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Mensaje</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Prioridad</th>
+                            <th scope="col">Fecha de Creación</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for message in messages %}
+                        <tr data-type="{{ message.type.lower() }}" 
+                            data-status="{{ 'active' if message.is_active else 'inactive' }}"
+                            data-message="{{ message.message.lower() }}">
+                            <td>
+                                <input type="checkbox" class="form-check-input message-checkbox" value="{{ message.id }}">
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="type-icon me-2">
+                                        {% if message.type == 'Actualización' %}
+                                            <i class="bi bi-arrow-up-circle text-info"></i>
+                                        {% elif message.type == 'Noticia' %}
+                                            <i class="bi bi-newspaper text-primary"></i>
+                                        {% elif message.type == 'Mantenimiento' %}
+                                            <i class="bi bi-tools text-warning"></i>
+                                        {% elif message.type == 'Evento' %}
+                                            <i class="bi bi-calendar-event text-success"></i>
+                                        {% else %}
+                                            <i class="bi bi-chat-dots text-secondary"></i>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge {% if message.type == 'Actualización' %}bg-info{% elif message.type == 'Noticia' %}bg-primary{% elif message.type == 'Mantenimiento' %}bg-warning{% elif message.type == 'Evento' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ message.type }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="message-content">
+                                    <div class="message-text">
+                                        {{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}
+                                    </div>
+                                    {% if message.message|length > 100 %}
+                                    <button type="button" 
+                                            class="btn btn-link btn-sm p-0 text-decoration-none" 
+                                            onclick="toggleFullMessage(this, '{{ message.message | replace("'", "\\'") }}')"
+                                            data-full-text="{{ message.message | replace('"', '&quot;') }}">
+                                        Ver más
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="status{{ message.id }}"
+                                           {% if message.is_active %}checked{% endif %}
+                                           onchange="toggleMessageStatus({{ message.id }}, this.checked)">
+                                    <label class="form-check-label" for="status{{ message.id }}">
+                                        <span class="badge {% if message.is_active %}bg-success{% else %}bg-secondary{% endif %}" id="statusBadge{{ message.id }}">
+                                            {% if message.is_active %}Activo{% else %}Inactivo{% endif %}
+                                        </span>
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="priority-display">
+                                    <span class="badge bg-light text-dark">
+                                        {{ message.priority }}
+                                    </span>
+                                    <div class="priority-stars">
+                                        {% for i in range(1, 6) %}
+                                            {% if i <= message.priority %}
+                                                <i class="bi bi-star-fill text-warning small"></i>
+                                            {% else %}
+                                                <i class="bi bi-star text-muted small"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ message.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </small>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="bi bi-person me-1"></i>
+                                    {% if message.created_by %}
+                                        Admin
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#messageModal{{ message.id }}"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-success"
+                                            onclick="duplicateMessage({{ message.id }})"
+                                            title="Duplicar">
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                    
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary dropdown-toggle" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="editMessage({{ message.id }})">
+                                                    <i class="bi bi-pencil me-2"></i>Editar
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="changePriority({{ message.id }}, {{ message.priority }})">
+                                                    <i class="bi bi-arrow-up-down me-2"></i>Cambiar Prioridad
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   onclick="deleteMessage({{ message.id }})">
+                                                    <i class="bi bi-trash me-2"></i>Eliminar
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-chat-dots" style="font-size: 4rem; color: #dee2e6;"></i>
+                </div>
+                <h5 class="text-muted">No hay mensajes</h5>
+                <p class="text-muted">Crea tu primer mensaje para los usuarios del launcher</p>
+                <a href="{{ url_for('admin.create_message') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Crear Primer Mensaje
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Message Detail Modals -->
+{% for message in messages %}
+<div class="modal fade" id="messageModal{{ message.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-chat-dots me-2"></i>{{ message.type }} - Detalles
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Información</h6>
+                        <dl class="row">
+                            <dt class="col-sm-4">Tipo:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge {% if message.type == 'Actualización' %}bg-info{% elif message.type == 'Noticia' %}bg-primary{% elif message.type == 'Mantenimiento' %}bg-warning{% elif message.type == 'Evento' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ message.type }}
+                                </span>
+                            </dd>
+                            
+                            <dt class="col-sm-4">Estado:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge {% if message.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {% if message.is_active %}Activo{% else %}Inactivo{% endif %}
+                                </span>
+                            </dd>
+                            
+                            <dt class="col-sm-4">Prioridad:</dt>
+                            <dd class="col-sm-8">
+                                <span class="badge bg-light text-dark">{{ message.priority }}</span>
+                                <div class="mt-1">
+                                    {% for i in range(1, 6) %}
+                                        {% if i <= message.priority %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                            <i class="bi bi-star text-muted"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </dd>
+                            
+                            <dt class="col-sm-4">Creado:</dt>
+                            <dd class="col-sm-8">{{ message.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Vista Previa en Launcher</h6>
+                        <div class="launcher-preview-box p-3 border rounded bg-light">
+                            <div class="d-flex align-items-start">
+                                <div class="me-2">
+                                    {% if message.type == 'Actualización' %}
+                                        <img src="/static/hot.gif" alt="Hot" style="max-width: 20px;">
+                                    {% else %}
+                                        <img src="/static/new.gif" alt="New" style="max-width: 20px;">
+                                    {% endif %}
+                                </div>
+                                <div class="small">
+                                    {{ message.message }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                <h6 class="fw-bold">Mensaje Completo</h6>
+                <div class="message-full-content bg-light p-3 rounded">
+                    {{ message.message | nl2br | safe }}
+                </div>
+                
+                <hr>
+                <h6 class="fw-bold">JSON Output</h6>
+                <pre class="bg-dark text-light p-3 rounded small"><code>{
+  "type": "{{ message.type }}",
+  "message": "{{ message.message | replace('"', '\\"') }}"
+}</code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" 
+                        class="btn btn-success"
+                        onclick="duplicateMessage({{ message.id }})">
+                    <i class="bi bi-copy me-1"></i>Duplicar
+                </button>
+                <button type="button" 
+                        class="btn btn-primary"
+                        onclick="editMessage({{ message.id }})">
+                    <i class="bi bi-pencil me-1"></i>Editar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search and filter functionality
+    document.getElementById('searchInput').addEventListener('input', filterMessages);
+    document.getElementById('typeFilter').addEventListener('change', filterMessages);
+    document.getElementById('statusFilter').addEventListener('change', filterMessages);
+    
+    function filterMessages() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+        
+        const rows = document.querySelectorAll('#messagesTable tbody tr');
+        
+        rows.forEach(row => {
+            const type = row.dataset.type;
+            const status = row.dataset.status;
+            const message = row.dataset.message;
+            
+            let show = true;
+            
+            if (searchTerm && !message.includes(searchTerm) && !type.includes(searchTerm)) {
+                show = false;
+            }
+            
+            if (typeFilter && !type.includes(typeFilter)) {
+                show = false;
+            }
+            
+            if (statusFilter && status !== statusFilter) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+    
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('typeFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        filterMessages();
+    }
+    
+    // Toggle message status
+    function toggleMessageStatus(messageId, isActive) {
+        const statusBadge = document.getElementById(`statusBadge${messageId}`);
+        
+        // Update badge
+        if (isActive) {
+            statusBadge.textContent = 'Activo';
+            statusBadge.className = 'badge bg-success';
+        } else {
+            statusBadge.textContent = 'Inactivo';
+            statusBadge.className = 'badge bg-secondary';
+        }
+        
+        // Here you would make an AJAX call to update the status
+        console.log(`Toggle message ${messageId} to ${isActive ? 'active' : 'inactive'}`);
+        
+        showAlert('success', `Mensaje ${isActive ? 'activado' : 'desactivado'} correctamente`);
+    }
+    
+    // Toggle full message display
+    function toggleFullMessage(button, fullText) {
+        const messageDiv = button.parentNode.querySelector('.message-text');
+        const isExpanded = button.textContent.trim() === 'Ver menos';
+        
+        if (isExpanded) {
+            messageDiv.textContent = fullText.substring(0, 100) + '...';
+            button.textContent = 'Ver más';
+        } else {
+            messageDiv.textContent = fullText;
+            button.textContent = 'Ver menos';
+        }
+    }
+    
+    // Delete message
+    function deleteMessage(messageId) {
+        if (confirm('¿Eliminar este mensaje? Esta acción no se puede deshacer.')) {
+            // Here you would implement the actual deletion
+            console.log('Deleting message:', messageId);
+            showAlert('info', 'Función de eliminación no implementada en el frontend');
+        }
+    }
+    
+    // Duplicate message
+    function duplicateMessage(messageId) {
+        // Here you would implement message duplication
+        console.log('Duplicating message:', messageId);
+        showAlert('info', 'Función de duplicación no implementada en el frontend');
+    }
+    
+    // Edit message
+    function editMessage(messageId) {
+        // Here you would redirect to edit page or open edit modal
+        console.log('Editing message:', messageId);
+        showAlert('info', 'Función de edición no implementada en el frontend');
+    }
+    
+    // Change priority
+    function changePriority(messageId, currentPriority) {
+        const newPriority = prompt(`Ingresa nueva prioridad (1-5):`, currentPriority);
+        
+        if (newPriority && newPriority >= 1 && newPriority <= 5) {
+            console.log(`Change priority for message ${messageId} to ${newPriority}`);
+            showAlert('success', `Prioridad actualizada a ${newPriority}`);
+        }
+    }
+    
+    // Checkbox selection
+    document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.message-checkbox');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        updateActionButtons();
+    });
+    
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('message-checkbox')) {
+            updateActionButtons();
+        }
+    });
+    
+    function updateActionButtons() {
+        const selectedCheckboxes = document.querySelectorAll('.message-checkbox:checked');
+        const activateBtn = document.getElementById('activateBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        
+        const hasSelection = selectedCheckboxes.length > 0;
+        activateBtn.disabled = !hasSelection;
+        deleteBtn.disabled = !hasSelection;
+        
+        if (hasSelection) {
+            activateBtn.innerHTML = `<i class="bi bi-toggle-on"></i> Activar (${selectedCheckboxes.length})`;
+            deleteBtn.innerHTML = `<i class="bi bi-trash"></i> Eliminar (${selectedCheckboxes.length})`;
+        } else {
+            activateBtn.innerHTML = '<i class="bi bi-toggle-on"></i> Activar';
+            deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
+        }
+    }
+    
+    // Bulk actions
+    function activateSelected() {
+        const selectedCheckboxes = document.querySelectorAll('.message-checkbox:checked');
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        if (selectedIds.length === 0) return;
+        
+        console.log('Activating messages:', selectedIds);
+        showAlert('success', `${selectedIds.length} mensajes activados`);
+    }
+    
+    function deleteSelected() {
+        const selectedCheckboxes = document.querySelectorAll('.message-checkbox:checked');
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        if (selectedIds.length === 0) return;
+        
+        if (confirm(`¿Eliminar ${selectedIds.length} mensaje(s) seleccionado(s)? Esta acción no se puede deshacer.`)) {
+            console.log('Deleting messages:', selectedIds);
+            showAlert('info', 'Función de eliminación múltiple no implementada en el frontend');
+        }
+    }
+    
+    // Other actions
+    function toggleAllMessages() {
+        const switches = document.querySelectorAll('input[type="checkbox"][id^="status"]');
+        const allActive = Array.from(switches).every(sw => sw.checked);
+        
+        switches.forEach(sw => {
+            sw.checked = !allActive;
+            const messageId = sw.id.replace('status', '');
+            toggleMessageStatus(messageId, sw.checked);
+        });
+    }
+    
+    function previewInLauncher() {
+        window.open('/api/message.json', '_blank');
+    }
+    
+    function exportMessages() {
+        const messages = [];
+        document.querySelectorAll('#messagesTable tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 1) {
+                messages.push({
+                    type: row.dataset.type,
+                    message: row.dataset.message,
+                    status: row.dataset.status,
+                    date: cells[5].textContent.trim()
+                });
+            }
+        });
+        
+        const csv = 'Type,Message,Status,Date\n' + 
+                    messages.map(m => `"${m.type}","${m.message}","${m.status}","${m.date}"`).join('\n');
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'messages.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showAlert('success', 'Mensajes exportados como messages.csv');
+    }
+    
+    // Show alert helper
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                const alert = new bootstrap.Alert(alertDiv);
+                alert.close();
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

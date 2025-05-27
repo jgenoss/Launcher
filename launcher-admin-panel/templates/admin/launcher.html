@@ -1,0 +1,567 @@
+{% extends "base.html" %}
+
+{% block title %}Versiones del Launcher - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-app me-2"></i>Versiones del Launcher
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin.upload_launcher') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-cloud-upload"></i> Subir Nueva Versión
+            </a>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-gear"></i> Acciones
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/api/launcher_update.json" target="_blank">
+                    <i class="bi bi-code me-2"></i>Ver JSON del Launcher
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="testLauncherUpdate()">
+                    <i class="bi bi-play-circle me-2"></i>Probar Actualización
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="generateUpdateScript()">
+                    <i class="bi bi-file-code me-2"></i>Generar Script de Update
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Launcher Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ launchers|length }}</h5>
+                <p class="card-text">Versiones Totales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {% set current = launchers | selectattr('is_current') | first %}
+                    {{ current.version if current else 'N/A' }}
+                </h5>
+                <p class="card-text">Versión Actual</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {% set total_size = launchers | sum(attribute='file_path') | get_total_size %}
+                    {{ total_size }} MB
+                </h5>
+                <p class="card-text">Tamaño Total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    {{ launchers | length - (launchers | selectattr('is_current') | list | length) }}
+                </h5>
+                <p class="card-text">Versiones Archivadas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current Launcher Info -->
+{% set current_launcher = launchers | selectattr('is_current') | first %}
+{% if current_launcher %}
+<div class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-star me-2"></i>Launcher Actual en Producción
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Versión:</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-success fs-6">{{ current_launcher.version }}</span>
+                    </dd>
+                    
+                    <dt class="col-sm-3">Archivo:</dt>
+                    <dd class="col-sm-9"><code>{{ current_launcher.filename }}</code></dd>
+                    
+                    <dt class="col-sm-3">Fecha:</dt>
+                    <dd class="col-sm-9">{{ current_launcher.created_at.strftime('%d/%m/%Y %H:%M') }}</dd>
+                    
+                    <dt class="col-sm-3">URL de descarga:</dt>
+                    <dd class="col-sm-9">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control font-monospace" 
+                                   value="{{ request.url_root }}Launcher/{{ current_launcher.filename }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="copyToClipboard('{{ request.url_root }}Launcher/{{ current_launcher.filename }}')">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </dd>
+                </dl>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="/Launcher/{{ current_launcher.filename }}" 
+                   class="btn btn-success mb-2" target="_blank">
+                    <i class="bi bi-download me-2"></i>Descargar
+                </a>
+                <br>
+                <button class="btn btn-outline-info btn-sm" onclick="testLauncherDownload('{{ current_launcher.filename }}')">
+                    <i class="bi bi-play-circle me-1"></i>Probar Descarga
+                </button>
+            </div>
+        </div>
+        
+        {% if current_launcher.release_notes %}
+        <hr>
+        <h6 class="fw-bold">Notas de la Versión:</h6>
+        <div class="bg-light p-3 rounded">
+            {{ current_launcher.release_notes | nl2br | safe }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Launchers Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list me-2"></i>Historial de Versiones
+        </h5>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" onclick="cleanupOldVersions()">
+                <i class="bi bi-trash"></i> Limpiar Antiguas
+            </button>
+            <button type="button" class="btn btn-outline-info" onclick="exportVersionHistory()">
+                <i class="bi bi-download"></i> Exportar Historial
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if launchers %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Versión</th>
+                            <th scope="col">Archivo</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Tamaño</th>
+                            <th scope="col">Fecha de Subida</th>
+                            <th scope="col">Creado por</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for launcher in launchers %}
+                        <tr class="{% if launcher.is_current %}table-success{% endif %}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="version-icon me-2">
+                                        {% if launcher.is_current %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                        {% else %}
+                                            <i class="bi bi-app text-primary"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ launcher.version }}</strong>
+                                        {% if launcher.is_current %}
+                                            <span class="badge bg-success ms-2">Actual</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-file-earmark-code me-2 text-info"></i>
+                                    <div>
+                                        <code class="small">{{ launcher.filename }}</code>
+                                        <br>
+                                        <small class="text-muted">Ejecutable</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if launcher.is_current %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-broadcast me-1"></i>En Producción
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-archive me-1"></i>Archivada
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if launcher.file_path %}
+                                    {% set file_size = launcher.file_path | get_file_size %}
+                                    <span class="badge bg-light text-dark">{{ file_size }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ launcher.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </small>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <i class="bi bi-person me-1"></i>
+                                    {% if launcher.created_by %}
+                                        Admin
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    {% if not launcher.is_current %}
+                                        <a href="{{ url_for('admin.set_current_launcher', launcher_id=launcher.id) }}" 
+                                           class="btn btn-outline-success" 
+                                           title="Establecer como actual"
+                                           onclick="return confirm('¿Establecer {{ launcher.version }} como la versión actual del launcher?')">
+                                            <i class="bi bi-arrow-up-circle"></i>
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#launcherModal{{ launcher.id }}"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    
+                                    <a href="/Launcher/{{ launcher.filename }}" 
+                                       class="btn btn-outline-info" 
+                                       target="_blank"
+                                       title="Descargar">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary dropdown-toggle" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="testLauncherDownload('{{ launcher.filename }}')">
+                                                    <i class="bi bi-play-circle me-2"></i>Probar Descarga
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="generateUpdateScript('{{ launcher.version }}')">
+                                                    <i class="bi bi-file-code me-2"></i>Generar Script
+                                                </a>
+                                            </li>
+                                            {% if not launcher.is_current %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   onclick="deleteLauncher({{ launcher.id }}, '{{ launcher.version }}')">
+                                                    <i class="bi bi-trash me-2"></i>Eliminar
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-app" style="font-size: 4rem; color: #dee2e6;"></i>
+                </div>
+                <h5 class="text-muted">No hay versiones del launcher</h5>
+                <p class="text-muted">Sube tu primera versión del launcher para comenzar</p>
+                <a href="{{ url_for('admin.upload_launcher') }}" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload me-2"></i>Subir Primera Versión
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Launcher Detail Modals -->
+{% for launcher in launchers %}
+<div class="modal fade" id="launcherModal{{ launcher.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-app me-2"></i>Launcher {{ launcher.version }}
+                    {% if launcher.is_current %}
+                        <span class="badge bg-success ms-2">Actual</span>
+                    {% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Información General</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">Versión:</dt>
+                            <dd class="col-sm-7">{{ launcher.version }}</dd>
+                            
+                            <dt class="col-sm-5">Archivo:</dt>
+                            <dd class="col-sm-7"><code>{{ launcher.filename }}</code></dd>
+                            
+                            <dt class="col-sm-5">Estado:</dt>
+                            <dd class="col-sm-7">
+                                {% if launcher.is_current %}
+                                    <span class="badge bg-success">En Producción</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Archivada</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-5">Tamaño:</dt>
+                            <dd class="col-sm-7">
+                                {% if launcher.file_path %}
+                                    {% set file_size = launcher.file_path | get_file_size %}
+                                    {{ file_size }}
+                                {% else %}
+                                    <span class="text-muted">No disponible</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Detalles de Subida</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">Fecha:</dt>
+                            <dd class="col-sm-7">{{ launcher.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+                            
+                            <dt class="col-sm-5">Subido por:</dt>
+                            <dd class="col-sm-7">
+                                {% if launcher.created_by %}
+                                    <i class="bi bi-person me-1"></i>Admin
+                                {% else %}
+                                    <i class="bi bi-robot me-1"></i>Sistema
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-5">Ruta:</dt>
+                            <dd class="col-sm-7">
+                                <small class="text-muted">{{ launcher.file_path if launcher.file_path else 'No disponible' }}</small>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                {% if launcher.release_notes %}
+                <hr>
+                <h6 class="fw-bold">Notas de la Versión</h6>
+                <div class="bg-light p-3 rounded">
+                    {{ launcher.release_notes | nl2br | safe }}
+                </div>
+                {% endif %}
+                
+                <hr>
+                <h6 class="fw-bold">URLs de Descarga</h6>
+                <div class="mb-2">
+                    <label class="form-label small fw-bold">URL Directa:</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" 
+                               value="{{ request.url_root }}Launcher/{{ launcher.filename }}" readonly>
+                        <button class="btn btn-outline-secondary" type="button"
+                                onclick="copyToClipboard('{{ request.url_root }}Launcher/{{ launcher.filename }}')">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label small fw-bold">API JSON:</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" 
+                               value="{{ request.url_root }}api/launcher_update.json" readonly>
+                        <button class="btn btn-outline-secondary" type="button"
+                                onclick="copyToClipboard('{{ request.url_root }}api/launcher_update.json')">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                {% if not launcher.is_current %}
+                    <a href="{{ url_for('admin.set_current_launcher', launcher_id=launcher.id) }}" 
+                       class="btn btn-success"
+                       onclick="return confirm('¿Establecer {{ launcher.version }} como la versión actual?')">
+                        <i class="bi bi-arrow-up-circle me-1"></i>Establecer como Actual
+                    </a>
+                {% endif %}
+                <a href="/Launcher/{{ launcher.filename }}" class="btn btn-outline-primary" target="_blank">
+                    <i class="bi bi-download me-1"></i>Descargar
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Test launcher download
+    function testLauncherDownload(filename) {
+        const testUrl = `/Launcher/${filename}`;
+        
+        fetch(testUrl, { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    showAlert('success', `✅ El launcher ${filename} está disponible para descarga`);
+                } else {
+                    showAlert('danger', `❌ Error ${response.status}: El launcher ${filename} no está disponible`);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', `❌ Error de conexión: ${error.message}`);
+            });
+    }
+    
+    // Test launcher update endpoint
+    function testLauncherUpdate() {
+        fetch('/api/launcher_update.json')
+            .then(response => response.json())
+            .then(data => {
+                showAlert('success', `✅ API funcionando correctamente. Versión actual: ${data.version}`);
+            })
+            .catch(error => {
+                showAlert('danger', `❌ Error en la API: ${error.message}`);
+            });
+    }
+    
+    // Delete launcher version
+    function deleteLauncher(launcherId, version) {
+        if (confirm(`¿Eliminar la versión ${version} del launcher? Esta acción no se puede deshacer.`)) {
+            // Here you would implement the actual deletion
+            console.log('Deleting launcher:', launcherId);
+            showAlert('info', 'Función de eliminación no implementada en el frontend');
+        }
+    }
+    
+    // Generate update script
+    function generateUpdateScript(version = null) {
+        const currentVersion = version || 'latest';
+        
+        const script = `@echo off
+echo Actualizando Launcher...
+curl -L -o LauncherUpdater.exe "${window.location.origin}/Launcher/LauncherUpdater.exe"
+if exist LauncherUpdater.exe (
+    echo Iniciando actualizador...
+    LauncherUpdater.exe "${window.location.origin}/Launcher/" "Launcher.exe" "${currentVersion}"
+) else (
+    echo Error: No se pudo descargar el actualizador
+    pause
+)`;
+        
+        // Create and download script
+        const blob = new Blob([script], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `update_launcher_${currentVersion}.bat`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showAlert('success', `Script de actualización generado: update_launcher_${currentVersion}.bat`);
+    }
+    
+    // Cleanup old versions
+    function cleanupOldVersions() {
+        if (confirm('¿Eliminar todas las versiones archivadas del launcher? Solo se mantendrá la versión actual.')) {
+            showAlert('info', 'Función de limpieza no implementada en el frontend');
+        }
+    }
+    
+    // Export version history
+    function exportVersionHistory() {
+        const versions = [];
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 0) {
+                versions.push({
+                    version: cells[0].textContent.trim(),
+                    filename: cells[1].querySelector('code').textContent,
+                    status: cells[2].textContent.trim(),
+                    date: cells[4].textContent.trim()
+                });
+            }
+        });
+        
+        const csv = 'Version,Filename,Status,Date\n' + 
+                    versions.map(v => `${v.version},${v.filename},${v.status},${v.date}`).join('\n');
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'launcher_versions.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showAlert('success', 'Historial exportado como launcher_versions.csv');
+    }
+    
+    // Copy to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showAlert('success', 'URL copiada al portapapeles');
+        });
+    }
+    
+    // Show alert helper
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                const alert = new bootstrap.Alert(alertDiv);
+                alert.close();
+            }
+        }, 5000);
+    }
+</script>
+{% endblock %}

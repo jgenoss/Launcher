@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshStats()">
+                <i class="bi bi-arrow-clockwise"></i> Actualizar
+            </button>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-plus-circle"></i> Acciones Rápidas
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('admin.create_version') }}">
+                    <i class="bi bi-tag me-2"></i>Nueva Versión
+                </a></li>
+                <li><a class="dropdown-item" href="{{ url_for('admin.upload_files') }}">
+                    <i class="bi bi-upload me-2"></i>Subir Archivos
+                </a></li>
+                <li><a class="dropdown-item" href="{{ url_for('admin.create_update') }}">
+                    <i class="bi bi-download me-2"></i>Crear Actualización
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ url_for('admin.create_message') }}">
+                    <i class="bi bi-chat-dots me-2"></i>Nuevo Mensaje
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="small fw-bold text-white-50 text-uppercase">Versiones del Juego</div>
+                    <div class="h2 mb-0 text-white">{{ total_versions }}</div>
+                </div>
+                <div class="ms-3">
+                    <i class="bi bi-tags" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                {% if latest_version %}
+                    <small class="text-white-50">Última: {{ latest_version.version }}</small>
+                {% else %}
+                    <small class="text-white-50">No hay versiones</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card success">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="small fw-bold text-white-50 text-uppercase">Archivos del Juego</div>
+                    <div class="h2 mb-0 text-white">{{ total_files }}</div>
+                </div>
+                <div class="ms-3">
+                    <i class="bi bi-file-earmark" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-white-50">Total en el sistema</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card warning">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="small fw-bold text-white-50 text-uppercase">Paquetes de Actualización</div>
+                    <div class="h2 mb-0 text-white">{{ total_updates }}</div>
+                </div>
+                <div class="ms-3">
+                    <i class="bi bi-download" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-white-50">Listos para descarga</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card info">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <div class="small fw-bold text-white-50 text-uppercase">Descargas Totales</div>
+                    <div class="h2 mb-0 text-white">{{ total_downloads }}</div>
+                </div>
+                <div class="ms-3">
+                    <i class="bi bi-cloud-download" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-white-50">Últimas 24h: {{ recent_downloads }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="row">
+    <!-- Downloads Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart me-2"></i>Descargas por Día (Últimos 7 días)
+                </h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('admin.download_logs') }}">Ver todos los logs</a></li>
+                        <li><a class="dropdown-item" href="/api/stats" target="_blank">API de estadísticas</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="downloadsChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Status -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-activity me-2"></i>Estado del Sistema
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">Versión del Juego:</span>
+                        {% if latest_version %}
+                            <span class="badge bg-success">{{ latest_version.version }}</span>
+                        {% else %}
+                            <span class="badge bg-warning">No configurada</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">Launcher Actual:</span>
+                        {% if current_launcher %}
+                            <span class="badge bg-primary">{{ current_launcher.version }}</span>
+                        {% else %}
+                            <span class="badge bg-warning">No configurado</span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">Mensajes Activos:</span>
+                        <span class="badge bg-info">{{ active_messages }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">API Status:</span>
+                        <span class="badge bg-success" id="apiStatus">
+                            <i class="bi bi-check-circle me-1"></i>Online
+                        </span>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <h6 class="fw-bold mb-2">Acciones Rápidas</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('admin.versions') }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-tags me-1"></i>Gestionar Versiones
+                        </a>
+                        <a href="{{ url_for('admin.files') }}" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-file-earmark me-1"></i>Gestionar Archivos
+                        </a>
+                        <a href="{{ url_for('admin.messages') }}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-chat-dots me-1"></i>Gestionar Mensajes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history me-2"></i>Actividad Reciente
+                </h5>
+                <a href="{{ url_for('admin.download_logs') }}" class="btn btn-sm btn-outline-primary">
+                    Ver todo <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="recentActivity">
+                    <div class="text-center text-muted">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        Cargando actividad reciente...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Downloads Chart
+    const ctx = document.getElementById('downloadsChart').getContext('2d');
+    const downloadsData = {{ downloads_by_day | tojson  | safe }};
+    
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: downloadsData.map(d => {
+                const date = new Date(d.date);
+                return date.toLocaleDateString('es-ES', { 
+                    weekday: 'short', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            }),
+            datasets: [{
+                label: 'Descargas',
+                data: downloadsData.map(d => d.count),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            elements: {
+                point: {
+                    radius: 4,
+                    hoverRadius: 6
+                }
+            }
+        }
+    });
+    
+    // Check API Status
+    async function checkApiStatus() {
+        try {
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            
+            const statusBadge = document.getElementById('apiStatus');
+            if (data.status === 'online') {
+                statusBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i>Online';
+                statusBadge.className = 'badge bg-success';
+            } else {
+                statusBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Error';
+                statusBadge.className = 'badge bg-danger';
+            }
+        } catch (error) {
+            const statusBadge = document.getElementById('apiStatus');
+            statusBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Offline';
+            statusBadge.className = 'badge bg-danger';
+        }
+    }
+    
+    // Load Recent Activity
+    async function loadRecentActivity() {
+        try {
+            const response = await fetch('/admin/api/stats');
+            const data = await response.json();
+            
+            // This would need to be implemented in the backend
+            // For now, show a placeholder
+            document.getElementById('recentActivity').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3">Descargas por Tipo</h6>
+                        <div class="list-group list-group-flush">
+                            ${data.downloads_by_type ? data.downloads_by_type.map(item => 
+                                `<div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="text-capitalize">${item.type || 'Desconocido'}</span>
+                                    <span class="badge bg-primary rounded-pill">${item.count}</span>
+                                </div>`
+                            ).join('') : '<div class="text-muted">No hay datos disponibles</div>'}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold mb-3">Últimas 24 horas</h6>
+                        <div class="text-muted">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Sistema funcionando correctamente
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (error) {
+            document.getElementById('recentActivity').innerHTML = 
+                '<div class="text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error cargando actividad reciente</div>';
+        }
+    }
+    
+    // Refresh Stats
+    function refreshStats() {
+        checkApiStatus();
+        loadRecentActivity();
+        
+        // Show success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="bi bi-check-circle me-2"></i>Estadísticas actualizadas
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.content-area').insertBefore(alertDiv, document.querySelector('.content-area').firstChild);
+        
+        setTimeout(() => {
+            const alert = new bootstrap.Alert(alertDiv);
+            alert.close();
+        }, 3000);
+    }
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        checkApiStatus();
+        loadRecentActivity();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(checkApiStatus, 30000);
+    });
+</script>
+{% endblock %}

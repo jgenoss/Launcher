@@ -1,0 +1,82 @@
+# Usar imagen base de Python 3.11 slim
+FROM python:3.11-slim
+
+# Información del mantenedor
+LABEL maintainer="admin@localhost"
+LABEL description="Launcher Admin Panel - Panel de administración para gestión de actualizaciones de juegos"
+LABEL version="1.0.0"
+
+# Variables de entorno
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_ENV=production \
+    PORT=5000 \
+    WORKERS=4
+
+# Crear usuario no-root para mayor seguridad
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar requirements primero para aprovechar cache de Docker
+COPY requirements.txt .
+
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn
+
+# Crear directorios necesarios
+RUN mkdir -p uploads/files uploads/updates static/downloads logs backups temp && \
+    chown -R appuser:appuser /app
+
+# Copiar código de la aplicación
+COPY --chown=appuser:appuser . .
+
+# Crear archivos de configuración por defecto si no existen
+RUN if [ ! -f .env ]; then \
+        echo "FLASK_ENV=production" > .env && \
+        echo "SECRET_KEY=change-this-in-production-$(openssl rand -hex 32)" >> .env && \
+        echo "DATABASE_URL=sqlite:///launcher_admin.db" >> .env && \
+        echo "UPLOAD_FOLDER=uploads" >> .env && \
+        echo "MAX_CONTENT_LENGTH=524288000" >> .env; \
+    fi
+
+# Crear banner HTML por defecto
+RUN if [ ! -f static/downloads/banner.html ]; then \
+        echo '<!DOCTYPE html><html><head><title>Game Launcher</title><style>body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;}h1{font-size:2rem;margin-bottom:1rem;}p{opacity:0.8;}</style></head><body><div><h1>🎮 Game Launcher</h1><p>Panel de administración configurado correctamente</p></div></body></html>' > static/downloads/banner.html; \
+    fi
+
+# Hacer que el script de inicio sea ejecutable
+RUN chmod +x run.py
+
+# Cambiar al usuario no-root
+USER appuser
+
+# Exponer puerto
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/api/status || exit 1
+
+# Comando por defecto
+CMD ["python", "run.py"]
+
+# Volumes para persistencia de datos
+VOLUME ["/app/uploads", "/app/logs", "/app/backups"]
+
+# Metadatos adicionales
+LABEL org.opencontainers.image.source="https://github.com/tu-usuario/launcher-admin-panel" \
+      org.opencontainers.image.title="Launcher Admin Panel" \
+      org.opencontainers.image.description="Panel de administración web para gestionar actualizaciones, archivos y versiones de juegos" \
+      org.opencontainers.image.vendor="Tu Empresa" \
+      org.opencontainers.image.licenses="MIT"

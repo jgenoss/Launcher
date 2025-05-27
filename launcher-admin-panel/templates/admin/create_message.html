@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Mensaje - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-chat-dots me-2"></i>Crear Nuevo Mensaje
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('admin.messages') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Mensajes
+        </a>
+    </div>
+</div>
+
+<form method="POST" id="messageForm">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Message Type -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-tag me-2"></i>Tipo de Mensaje
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="form-floating mb-3">
+                                <select class="form-select" id="type" name="type" required onchange="updatePreview()">
+                                    <option value="">Selecciona el tipo...</option>
+                                    <option value="Actualización">Actualización</option>
+                                    <option value="Noticia">Noticia</option>
+                                    <option value="Mantenimiento">Mantenimiento</option>
+                                    <option value="Evento">Evento</option>
+                                    <option value="Promoción">Promoción</option>
+                                    <option value="Aviso">Aviso</option>
+                                </select>
+                                <label for="type">
+                                    <i class="bi bi-bookmark me-2"></i>Tipo de Mensaje
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating mb-3">
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="priority" 
+                                       name="priority" 
+                                       min="1" 
+                                       max="5" 
+                                       value="3"
+                                       onchange="updatePreview()">
+                                <label for="priority">
+                                    <i class="bi bi-arrow-up me-2"></i>Prioridad (1-5)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_active" 
+                                       name="is_active"
+                                       checked
+                                       onchange="updatePreview()">
+                                <label class="form-check-label" for="is_active">
+                                    <i class="bi bi-toggle-on me-2"></i>Activar inmediatamente
+                                </label>
+                                <div class="form-text">El mensaje aparecerá en el launcher inmediatamente</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="priority-display">
+                                <label class="form-label small">Prioridad Visual:</label>
+                                <div id="priorityStars">
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                    <i class="bi bi-star text-muted"></i>
+                                    <i class="bi bi-star text-muted"></i>
+                                </div>
+                                <small class="text-muted">Los mensajes con mayor prioridad aparecen primero</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Content -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-chat-text me-2"></i>Contenido del Mensaje
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-floating">
+                        <textarea class="form-control" 
+                                  id="message" 
+                                  name="message" 
+                                  placeholder="Escribe el mensaje aquí..."
+                                  style="height: 150px;"
+                                  maxlength="500"
+                                  required
+                                  oninput="updatePreview(); updateCharCount()"></textarea>
+                        <label for="message">
+                            <i class="bi bi-pencil me-2"></i>Mensaje
+                        </label>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="form-text">
+                            Escribe un mensaje claro y conciso para los usuarios del launcher
+                        </div>
+                        <div class="char-counter">
+                            <small class="text-muted">
+                                <span id="charCount">0</span>/500 caracteres
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Templates -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning me-2"></i>Plantillas Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-info w-100 mb-2" onclick="useTemplate('update')">
+                                <i class="bi bi-arrow-up-circle me-2"></i>Actualización
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-warning w-100 mb-2" onclick="useTemplate('maintenance')">
+                                <i class="bi bi-tools me-2"></i>Mantenimiento
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-success w-100 mb-2" onclick="useTemplate('event')">
+                                <i class="bi bi-calendar-event me-2"></i>Evento
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-primary w-100 mb-2" onclick="useTemplate('news')">
+                                <i class="bi bi-newspaper me-2"></i>Noticia
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-danger w-100 mb-2" onclick="useTemplate('promotion')">
+                                <i class="bi bi-gift me-2"></i>Promoción
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-outline-secondary w-100 mb-2" onclick="clearMessage()">
+                                <i class="bi bi-x-circle me-2"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{{ url_for('admin.messages') }}" class="btn btn-outline-secondary me-md-2">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="btn-text">
+                        <i class="bi bi-check-circle"></i> Crear Mensaje
+                    </span>
+                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Live Preview -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-eye me-2"></i>Vista Previa en Launcher
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="launcher-preview-container">
+                        <div class="launcher-background p-3 rounded" style="background-color: #2c3e50; color: white; min-height: 200px;">
+                            <div class="preview-header mb-3">
+                                <h6 class="text-warning mb-0">Noticias</h6>
+                            </div>
+                            <div id="messagePreview" class="message-preview">
+                                <div class="d-flex align-items-start mb-2">
+                                    <img src="/static/new.gif" alt="New" class="me-2" style="max-width: 20px;" id="previewIcon">
+                                    <div class="message-content small" id="previewText">
+                                        Selecciona un tipo y escribe tu mensaje para ver la vista previa
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Esta es una simulación de cómo aparecerá el mensaje en el launcher
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Guidelines -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-lightbulb me-2"></i>Consejos para Mensajes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="guidelines">
+                        <h6 class="fw-bold">Mejores Prácticas:</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="bi bi-check text-success me-2"></i>Sé claro y conciso</li>
+                            <li><i class="bi bi-check text-success me-2"></i>Usa un lenguaje amigable</li>
+                            <li><i class="bi bi-check text-success me-2"></i>Incluye información relevante</li>
+                            <li><i class="bi bi-check text-success me-2"></i>Evita tecnicismos innecesarios</li>
+                        </ul>
+
+                        <h6 class="fw-bold">Tipos de Mensaje:</h6>
+                        <ul class="list-unstyled mb-3">
+                            <li><i class="bi bi-arrow-up-circle text-info me-2"></i><strong>Actualización:</strong> Nuevas versiones</li>
+                            <li><i class="bi bi-newspaper text-primary me-2"></i><strong>Noticia:</strong> Información general</li>
+                            <li><i class="bi bi-tools text-warning me-2"></i><strong>Mantenimiento:</strong> Avisos técnicos</li>
+                            <li><i class="bi bi-calendar-event text-success me-2"></i><strong>Evento:</strong> Actividades especiales</li>
+                        </ul>
+
+                        <h6 class="fw-bold">Prioridades:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-exclamation-triangle text-danger me-2"></i><strong>5:</strong> Urgente / Crítico</li>
+                            <li><i class="bi bi-exclamation-circle text-warning me-2"></i><strong>4:</strong> Importante</li>
+                            <li><i class="bi bi-info-circle text-info me-2"></i><strong>3:</strong> Normal</li>
+                            <li><i class="bi bi-chat text-secondary me-2"></i><strong>2:</strong> Menor</li>
+                            <li><i class="bi bi-circle text-muted me-2"></i><strong>1:</strong> Informativo</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JSON Preview -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-code me-2"></i>Vista JSON
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-dark text-light p-3 rounded small" id="jsonPreview"><code>{
+  "type": "",
+  "message": ""
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Message templates
+    const templates = {
+        update: {
+            type: 'Actualización',
+            message: 'Nueva versión disponible con mejoras de rendimiento y corrección de errores. ¡Actualiza ahora para obtener la mejor experiencia de juego!',
+            priority: 4
+        },
+        maintenance: {
+            type: 'Mantenimiento',
+            message: 'Mantenimiento programado del servidor el [FECHA] de [HORA] a [HORA]. El juego no estará disponible durante este período.',
+            priority: 3
+        },
+        event: {
+            type: 'Evento',
+            message: '¡Evento especial este fin de semana! Participa y gana recompensas exclusivas. No te pierdas esta oportunidad única.',
+            priority: 4
+        },
+        news: {
+            type: 'Noticia',
+            message: 'Descubre las últimas novedades del juego. Nuevos contenidos, características y mejoras están llegando pronto.',
+            priority: 2
+        },
+        promotion: {
+            type: 'Promoción',
+            message: '¡Oferta especial por tiempo limitado! Obtén descuentos en objetos premium y mejora tu experiencia de juego.',
+            priority: 3
+        }
+    };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('messageForm');
+        const priorityInput = document.getElementById('priority');
+        
+        // Initialize
+        updatePreview();
+        updateCharCount();
+        updatePriorityStars();
+        
+        // Priority input change
+        priorityInput.addEventListener('input', function() {
+            updatePriorityStars();
+            updatePreview();
+        });
+        
+        // Form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitMessage();
+        });
+    });
+    
+    function useTemplate(templateKey) {
+        const template = templates[templateKey];
+        if (!template) return;
+        
+        document.getElementById('type').value = template.type;
+        document.getElementById('message').value = template.message;
+        document.getElementById('priority').value = template.priority;
+        
+        updatePreview();
+        updateCharCount();
+        updatePriorityStars();
+    }
+    
+    function clearMessage() {
+        document.getElementById('type').value = '';
+        document.getElementById('message').value = '';
+        document.getElementById('priority').value = '3';
+        document.getElementById('is_active').checked = true;
+        
+        updatePreview();
+        updateCharCount();
+        updatePriorityStars();
+    }
+    
+    function updatePreview() {
+        const type = document.getElementById('type').value;
+        const message = document.getElementById('message').value;
+        const isActive = document.getElementById('is_active').checked;
+        
+        const previewIcon = document.getElementById('previewIcon');
+        const previewText = document.getElementById('previewText');
+        const jsonPreview = document.getElementById('jsonPreview');
+        
+        // Update icon based on type
+        if (type === 'Actualización') {
+            previewIcon.src = '/static/hot.gif';
+            previewIcon.alt = 'Hot';
+        } else {
+            previewIcon.src = '/static/new.gif';
+            previewIcon.alt = 'New';
+        }
+        
+        // Update text
+        if (message.trim()) {
+            previewText.textContent = message;
+            previewText.className = 'message-content small';
+        } else {
+            previewText.textContent = 'Escribe tu mensaje para ver la vista previa';
+            previewText.className = 'message-content small text-muted';
+        }
+        
+        // Update JSON preview
+        const jsonData = {
+            type: type || '',
+            message: message || ''
+        };
+        
+        jsonPreview.innerHTML = `<code>{
+  "type": "${jsonData.type}",
+  "message": "${jsonData.message.replace(/"/g, '\\"')}"
+}</code>`;
+        
+        // Show preview only if active
+        const messagePreview = document.getElementById('messagePreview');
+        if (!isActive) {
+            messagePreview.style.opacity = '0.5';
+            messagePreview.innerHTML = '<div class="text-muted small"><i class="bi bi-eye-slash me-2"></i>Mensaje inactivo - no aparecerá en el launcher</div>';
+        } else {
+            messagePreview.style.opacity = '1';
+            messagePreview.innerHTML = `
+                <div class="d-flex align-items-start mb-2">
+                    <img src="${previewIcon.src}" alt="${previewIcon.alt}" class="me-2" style="max-width: 20px;">
+                    <div class="${previewText.className}">${previewText.textContent}</div>
+                </div>
+            `;
+        }
+    }
+    
+    function updateCharCount() {
+        const message = document.getElementById('message').value;
+        const charCount = document.getElementById('charCount');
+        const length = message.length;
+        
+        charCount.textContent = length;
+        
+        // Change color based on length
+        if (length > 450) {
+            charCount.className = 'text-danger fw-bold';
+        } else if (length > 400) {
+            charCount.className = 'text-warning fw-bold';
+        } else {
+            charCount.className = 'text-muted';
+        }
+    }
+    
+    function updatePriorityStars() {
+        const priority = parseInt(document.getElementById('priority').value);
+        const starsContainer = document.getElementById('priorityStars');
+        
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= priority) {
+                starsHtml += '<i class="bi bi-star-fill text-warning"></i>';
+            } else {
+                starsHtml += '<i class="bi bi-star text-muted"></i>';
+            }
+        }
+        
+        starsContainer.innerHTML = starsHtml;
+    }
+    
+    async function submitMessage() {
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = submitBtn.querySelector('.btn-text');
+        const spinner = submitBtn.querySelector('.spinner-border');
+        
+        // Validate form
+        const type = document.getElementById('type').value;
+        const message = document.getElementById('message').value.trim();
+        
+        if (!type) {
+            alert('Selecciona un tipo de mensaje');
+            document.getElementById('type').focus();
+            return;
+        }
+        
+        if (!message) {
+            alert('Escribe el contenido del mensaje');
+            document.getElementById('message').focus();
+            return;
+        }
+        
+        if (message.length > 500) {
+            alert('El mensaje no puede exceder 500 caracteres');
+            document.getElementById('message').focus();
+            return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        btnText.innerHTML = '<i class="bi bi-hourglass"></i> Creando...';
+        spinner.classList.remove('d-none');
+        
+        try {
+            const formData = new FormData();
+            formData.append('type', type);
+            formData.append('message', message);
+            formData.append('priority', document.getElementById('priority').value);
+            formData.append('is_active', document.getElementById('is_active').checked);
+            
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                // Success
+                btnText.innerHTML = '<i class="bi bi-check-circle"></i> ¡Creado!';
+                
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("admin.messages") }}';
+                }, 1000);
+            } else {
+                throw new Error(`Error del servidor: ${response.status}`);
+            }
+            
+        } catch (error) {
+            // Error
+            btnText.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Error';
+            alert(`Error al crear el mensaje: ${error.message}`);
+            
+            // Restore button
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                btnText.innerHTML = '<i class="bi bi-check-circle"></i> Crear Mensaje';
+                spinner.classList.add('d-none');
+            }, 2000);
+        }
+    }
+</script>
+{% endblock %}

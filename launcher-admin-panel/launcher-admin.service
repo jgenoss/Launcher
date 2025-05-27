@@ -1,0 +1,15 @@
+[Unit]
+Description=Launcher Admin Panel
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/path/to/launcher-admin-panel
+Environment=PATH=/path/to/launcher-admin-panel/venv/bin
+ExecStart=/path/to/launcher-admin-panel/venv/bin/python app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

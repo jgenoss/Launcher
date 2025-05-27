@@ -1,0 +1,160 @@
+version: '3.8'
+
+services:
+  # Aplicación principal
+  launcher-admin:
+    build: .
+    container_name: launcher-admin-panel
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://launcher_user:launcher_pass@db:5432/launcher_db
+      - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
+      - UPLOAD_FOLDER=uploads
+      - MAX_CONTENT_LENGTH=524288000
+      - WORKERS=4
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+      - ./static/downloads:/app/static/downloads
+    depends_on:
+      - db
+      - redis
+    networks:
+      - launcher-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: launcher-admin-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=launcher_db
+      - POSTGRES_USER=launcher_user
+      - POSTGRES_PASSWORD=launcher_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - launcher-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U launcher_user -d launcher_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis para caché y sesiones
+  redis:
+    image: redis:7-alpine
+    container_name: launcher-admin-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_pass
+    volumes:
+      - redis_data:/data
+    networks:
+      - launcher-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx como proxy reverso (opcional)
+  nginx:
+    image: nginx:alpine
+    container_name: launcher-admin-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./uploads:/var/www/uploads:ro
+      - ./static:/var/www/static:ro
+    depends_on:
+      - launcher-admin
+    networks:
+      - launcher-network
+    profiles:
+      - with-nginx
+
+  # Servicio de backup automático
+  backup:
+    image: postgres:15-alpine
+    container_name: launcher-admin-backup
+    restart: "no"
+    environment:
+      - PGPASSWORD=launcher_pass
+    volumes:
+      - ./backups:/backups
+      - postgres_data:/var/lib/postgresql/data:ro
+    networks:
+      - launcher-network
+    command: >
+      sh -c "
+      echo 'Iniciando backup de base de datos...'
+      pg_dump -h db -U launcher_user -d launcher_db > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+      echo 'Backup completado'
+      find /backups -name '*.sql' -mtime +30 -delete
+      echo 'Backups antiguos eliminados'
+      "
+    profiles:
+      - backup
+    depends_on:
+      - db
+
+  # Servicio de monitoreo (opcional)
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: launcher-admin-monitoring
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - launcher-network
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+
+networks:
+  launcher-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Configuraciones adicionales
+x-common-variables: &common-variables
+  TZ: America/Mexico_City
+  PYTHONPATH: /app
+  LANG: es_ES.UTF-8
+  LC_ALL: es_ES.UTF-8

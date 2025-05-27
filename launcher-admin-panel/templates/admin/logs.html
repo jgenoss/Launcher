@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+
+{% block title %}Logs de Descarga - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-list-ul me-2"></i>Logs de Descarga
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()">
+                <i class="bi bi-arrow-clockwise"></i> Actualizar
+            </button>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-gear"></i> Acciones
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="exportLogs()">
+                    <i class="bi bi-download me-2"></i>Exportar Logs
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="clearOldLogs()">
+                    <i class="bi bi-trash me-2"></i>Limpiar Logs Antiguos
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/admin/api/stats" target="_blank">
+                    <i class="bi bi-bar-chart me-2"></i>Ver Estadísticas API
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Log Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ logs.total }}</h5>
+                <p class="card-text">Total de Descargas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {{ logs.items | selectattr('success') | list | length }}
+                </h5>
+                <p class="card-text">Descargas Exitosas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-danger">
+                    {{ logs.items | rejectattr('success') | list | length }}
+                </h5>
+                <p class="card-text">Descargas Fallidas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {{ logs.items | map(attribute='ip_address') | unique | list | length }}
+                </h5>
+                <p class="card-text">IPs Únicas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters and Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Buscar en logs..."
+                           id="searchInput">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="typeFilter">
+                    <option value="">Todos los tipos</option>
+                    {% for file_type in file_types %}
+                    <option value="{{ file_type }}" {% if current_file_type == file_type %}selected{% endif %}>
+                        {{ file_type | title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="statusFilter">
+                    <option value="">Todos los estados</option>
+                    <option value="success">Solo exitosos</option>
+                    <option value="failed">Solo fallidos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="timeFilter">
+                    <option value="">Todo el tiempo</option>
+                    <option value="today">Hoy</option>
+                    <option value="yesterday">Ayer</option>
+                    <option value="week">Última semana</option>
+                    <option value="month">Último mes</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="IP Address..."
+                       id="ipFilter">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Real-time Stats -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-activity me-2"></i>Actividad en Tiempo Real
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-8">
+                <canvas id="activityChart" width="400" height="150"></canvas>
+            </div>
+            <div class="col-md-4">
+                <div class="realtime-stats">
+                    <div class="stat-item mb-3">
+                        <h6 class="fw-bold">Última Hora</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>Descargas:</span>
+                            <span class="badge bg-primary" id="downloadsLastHour">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Usuarios únicos:</span>
+                            <span class="badge bg-info" id="uniqueUsersLastHour">-</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <h6 class="fw-bold">Archivos Populares</h6>
+                        <div id="popularFiles">
+                            <div class="d-flex justify-content-between">
+                                <small>Cargando...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-table me-2"></i>Registro de Descargas
+            {% if current_file_type %}
+                <span class="badge bg-primary ms-2">{{ current_file_type | title }}</span>
+            {% endif %}
+        </h5>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" onclick="autoRefresh()">
+                <i class="bi bi-arrow-repeat"></i> Auto-refresh
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if logs.items %}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0" id="logsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col" style="width: 150px;">Fecha/Hora</th>
+                            <th scope="col" style="width: 120px;">IP Address</th>
+                            <th scope="col">Archivo</th>
+                            <th scope="col" style="width: 100px;">Tipo</th>
+                            <th scope="col" style="width: 80px;">Estado</th>
+                            <th scope="col" style="width: 200px;">User Agent</th>
+                            <th scope="col" style="width: 80px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr data-ip="{{ log.ip_address }}" 
+                            data-type="{{ log.file_type or '' }}"
+                            data-status="{{ 'success' if log.success else 'failed' }}"
+                            data-file="{{ log.file_requested.lower() }}"
+                            data-date="{{ log.created_at.isoformat() }}">
+                            <td>
+                                <div class="timestamp">
+                                    <div class="fw-bold">{{ log.created_at.strftime('%H:%M:%S') }}</div>
+                                    <small class="text-muted">{{ log.created_at.strftime('%d/%m/%Y') }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="ip-address">
+                                    <code class="small">{{ log.ip_address }}</code>
+                                    <button type="button" 
+                                            class="btn btn-link btn-sm p-0 ms-1" 
+                                            onclick="filterByIP('{{ log.ip_address }}')"
+                                            title="Filtrar por esta IP">
+                                        <i class="bi bi-funnel"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="file-info">
+                                    <div class="d-flex align-items-center">
+                                        <div class="file-icon me-2">
+                                            {% if log.file_type == 'update' %}
+                                                <i class="bi bi-download text-primary"></i>
+                                            {% elif log.file_type == 'launcher' %}
+                                                <i class="bi bi-app text-success"></i>
+                                            {% elif log.file_type == 'game_file' %}
+                                                <i class="bi bi-file-earmark text-info"></i>
+                                            {% else %}
+                                                <i class="bi bi-file text-secondary"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold small">{{ log.file_requested }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if log.file_type %}
+                                    <span class="badge {% if log.file_type == 'update' %}bg-primary{% elif log.file_type == 'launcher' %}bg-success{% elif log.file_type == 'game_file' %}bg-info{% else %}bg-secondary{% endif %} small">
+                                        {{ log.file_type | title }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.success %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i>
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.user_agent %}
+                                    <div class="user-agent">
+                                        <small class="text-muted" title="{{ log.user_agent }}">
+                                            {{ log.user_agent[:50] }}{% if log.user_agent|length > 50 %}...{% endif %}
+                                        </small>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted small">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary btn-sm" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#logModal{{ log.id }}"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary btn-sm" 
+                                            onclick="testDownload('{{ log.file_requested }}')"
+                                            title="Probar descarga">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if logs.pages > 1 %}
+            <div class="card-footer">
+                <nav aria-label="Log pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if logs.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.download_logs', page=logs.prev_num, file_type=current_file_type) }}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in logs.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != logs.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.download_logs', page=page_num, file_type=current_file_type) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if logs.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.download_logs', page=logs.next_num, file_type=current_file_type) }}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                
+                <div class="text-center text-muted mt-2">
+                    <small>
+                        Mostrando {{ logs.per_page * (logs.page - 1) + 1 }} - 
+                        {{ logs.per_page * logs.page if logs.page < logs.pages else logs.total }} 
+                        de {{ logs.total }} registros
+                    </small>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-list-ul" style="font-size: 4rem; color: #dee2e6;"></i>
+                </div>
+                <h5 class="text-muted">No hay logs de descarga</h5>
+                <p class="text-muted">Los logs aparecerán cuando los usuarios descarguen archivos del launcher</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Log Detail Modals -->
+{% for log in logs.items %}
+<div class="modal fade" id="logModal{{ log.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle me-2"></i>Detalles del Log
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Fecha/Hora:</dt>
+                    <dd class="col-sm-8">{{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+                    
+                    <dt class="col-sm-4">IP Address:</dt>
+                    <dd class="col-sm-8"><code>{{ log.ip_address }}</code></dd>
+                    
+                    <dt class="col-sm-4">Archivo:</dt>
+                    <dd class="col-sm-8"><code>{{ log.file_requested }}</code></dd>
+                    
+                    <dt class="col-sm-4">Tipo:</dt>
+                    <dd class="col-sm-8">
+                        {% if log.file_type %}
+                            <span class="badge bg-primary">{{ log.file_type | title }}</span>
+                        {% else %}
+                            <span class="text-muted">No especificado</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">Estado:</dt>
+                    <dd class="col-sm-8">
+                        {% if log.success %}
+                            <span class="badge bg-success">Exitoso</span>
+                        {% else %}
+                            <span class="badge bg-danger">Fallido</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-4">User Agent:</dt>
+                    <dd class="col-sm-8">
+                        {% if log.user_agent %}
+                            <small class="font-monospace">{{ log.user_agent }}</small>
+                        {% else %}
+                            <span class="text-muted">No disponible</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" 
+                        class="btn btn-primary"
+                        onclick="testDownload('{{ log.file_requested }}')">
+                    <i class="bi bi-play-circle me-1"></i>Probar Descarga
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let autoRefreshInterval = null;
+    
+    // Filter functionality
+    document.getElementById('searchInput').addEventListener('input', filterLogs);
+    document.getElementById('typeFilter').addEventListener('change', filterLogs);
+    document.getElementById('statusFilter').addEventListener('change', filterLogs);
+    document.getElementById('timeFilter').addEventListener('change', filterLogs);
+    document.getElementById('ipFilter').addEventListener('input', filterLogs);
+    
+    function filterLogs() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const typeFilter = document.getElementById('typeFilter').value;
+        const statusFilter = document.getElementById('statusFilter').value;
+        const timeFilter = document.getElementById('timeFilter').value;
+        const ipFilter = document.getElementById('ipFilter').value;
+        
+        const rows = document.querySelectorAll('#logsTable tbody tr');
+        
+        rows.forEach(row => {
+            const ip = row.dataset.ip;
+            const type = row.dataset.type;
+            const status = row.dataset.status;
+            const file = row.dataset.file;
+            const date = new Date(row.dataset.date);
+            
+            let show = true;
+            
+            // Search filter
+            if (searchTerm && !file.includes(searchTerm) && !ip.includes(searchTerm) && !type.includes(searchTerm)) {
+                show = false;
+            }
+            
+            // Type filter
+            if (typeFilter && type !== typeFilter) {
+                show = false;
+            }
+            
+            // Status filter
+            if (statusFilter && status !== statusFilter) {
+                show = false;
+            }
+            
+            // IP filter
+            if (ipFilter && !ip.includes(ipFilter)) {
+                show = false;
+            }
+            
+            // Time filter
+            if (timeFilter) {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                
+                switch (timeFilter) {
+                    case 'today':
+                        if (date < today) show = false;
+                        break;
+                    case 'yesterday':
+                        if (date < yesterday || date >= today) show = false;
+                        break;
+                    case 'week':
+                        if (date < weekAgo) show = false;
+                        break;
+                    case 'month':
+                        if (date < monthAgo) show = false;
+                        break;
+                }
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+    }
+    
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('typeFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('timeFilter').value = '';
+        document.getElementById('ipFilter').value = '';
+        filterLogs();
+    }
+    
+    function filterByIP(ip) {
+        document.getElementById('ipFilter').value = ip;
+        filterLogs();
+        showAlert('info', `Filtrando por IP: ${ip}`);
+    }
+    
+    function testDownload(filename) {
+        const testUrl = `/Launcher/files/${filename}`;
+        
+        fetch(testUrl, { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    showAlert('success', `✅ ${filename} está disponible para descarga`);
+                } else {
+                    showAlert('danger', `❌ Error ${response.status}: ${filename} no está disponible`);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', `❌ Error de conexión: ${error.message}`);
+            });
+    }
+    
+    function refreshLogs() {
+        location.reload();
+    }
+    
+    function autoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+            showAlert('info', 'Auto-refresh desactivado');
+        } else {
+            autoRefreshInterval = setInterval(refreshLogs, 30000); // 30 seconds
+            showAlert('success', 'Auto-refresh activado (30s)');
+        }
+    }
+    
+    function exportLogs() {
+        const logs = [];
+        document.querySelectorAll('#logsTable tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 0) {
+                logs.push({
+                    datetime: cells[0].textContent.trim().replace(/\s+/g, ' '),
+                    ip: row.dataset.ip,
+                    file: row.dataset.file,
+                    type: row.dataset.type,
+                    status: row.dataset.status
+                });
+            }
+        });
+        
+        const csv = 'DateTime,IP,File,Type,Status\n' + 
+                    logs.map(l => `"${l.datetime}","${l.ip}","${l.file}","${l.type}","${l.status}"`).join('\n');
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `download_logs_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showAlert('success', 'Logs exportados correctamente');
+    }
+    
+    function clearOldLogs() {
+        if (confirm('¿Eliminar logs más antiguos de 30 días? Esta acción no se puede deshacer.')) {
+            showAlert('info', 'Función de limpieza no implementada en el frontend');
+        }
+    }
+    
+    // Real-time stats (mock data)
+    function updateRealTimeStats() {
+        // This would be implemented with actual AJAX calls
+        document.getElementById('downloadsLastHour').textContent = Math.floor(Math.random() * 50) + 10;
+        document.getElementById('uniqueUsersLastHour').textContent = Math.floor(Math.random() * 20) + 5;
+        
+        const popularFiles = document.getElementById('popularFiles');
+        const files = ['update_1.0.0.3.zip', 'Launcher.exe', 'config.xml'];
+        
+        popularFiles.innerHTML = files.map(file => `
+            <div class="d-flex justify-content-between mb-1">
+                <small>${file}</small>
+                <span class="badge bg-light text-dark">${Math.floor(Math.random() * 20) + 1}</span>
+            </div>
+        `).join('');
+    }
+    
+    // Initialize activity chart (simple mock)
+    function initActivityChart() {
+        const ctx = document.getElementById('activityChart').getContext('2d');
+        
+        // Generate mock data for the last 24 hours
+        const labels = [];
+        const data = [];
+        
+        for (let i = 23; i >= 0; i--) {
+            const hour = new Date();
+            hour.setHours(hour.getHours() - i);
+            labels.push(hour.getHours() + ':00');
+            data.push(Math.floor(Math.random() * 20) + 1);
+        }
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Descargas por Hora',
+                    data: data,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Show alert helper
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                const alert = new bootstrap.Alert(alertDiv);
+                alert.close();
+            }
+        }, 5000);
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initActivityChart();
+        updateRealTimeStats();
+        
+        // Update real-time stats every 30 seconds
+        setInterval(updateRealTimeStats, 30000);
+    });
+</script>
+{% endblock %}

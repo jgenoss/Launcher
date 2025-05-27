@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Versiones del Juego - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-tags me-2"></i>Versiones del Juego
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin.create_version') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle"></i> Nueva Versión
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ versions|length }}</h5>
+                <p class="card-text">Versiones Totales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {% set latest = versions | selectattr('is_latest') | first %}
+                    {{ latest.version if latest else 'N/A' }}
+                </h5>
+                <p class="card-text">Versión Actual</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {{ versions | selectattr('files') | list | length }}
+                </h5>
+                <p class="card-text">Con Archivos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    {{ versions | selectattr('update_packages') | list | length }}
+                </h5>
+                <p class="card-text">Con Updates</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Versions Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list me-2"></i>Lista de Versiones
+        </h5>
+        <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="viewOptions" id="gridView" autocomplete="off">
+            <label class="btn btn-outline-secondary" for="gridView">
+                <i class="bi bi-grid-3x3-gap"></i>
+            </label>
+            
+            <input type="radio" class="btn-check" name="viewOptions" id="listView" autocomplete="off" checked>
+            <label class="btn btn-outline-secondary" for="listView">
+                <i class="bi bi-list-ul"></i>
+            </label>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if versions %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Versión</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Archivos</th>
+                            <th scope="col">Updates</th>
+                            <th scope="col">Fecha de Creación</th>
+                            <th scope="col">Creado por</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for version in versions %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="version-icon me-2">
+                                        <i class="bi bi-tag-fill text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <strong>{{ version.version }}</strong>
+                                        {% if version.is_latest %}
+                                            <span class="badge bg-success ms-2">Actual</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if version.is_latest %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Activa
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-archive me-1"></i>Archivada
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info rounded-pill">
+                                    {{ version.files | length }}
+                                    <i class="bi bi-file-earmark ms-1"></i>
+                                </span>
+                            </td>
+                            <td>
+                                {% if version.update_packages %}
+                                    <span class="badge bg-primary rounded-pill">
+                                        {{ version.update_packages | length }}
+                                        <i class="bi bi-download ms-1"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">
+                                        <i class="bi bi-dash"></i>
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ version.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </small>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <i class="bi bi-person me-1"></i>
+                                    {% if version.created_by %}
+                                        Admin
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    {% if not version.is_latest %}
+                                        <a href="{{ url_for('admin.set_latest_version', version_id=version.id) }}" 
+                                           class="btn btn-outline-success" 
+                                           title="Establecer como actual"
+                                           onclick="return confirm('¿Establecer {{ version.version }} como la versión actual?')">
+                                            <i class="bi bi-arrow-up-circle"></i>
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#versionModal{{ version.id }}"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary dropdown-toggle" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="{{ url_for('admin.files', version_id=version.id) }}">
+                                                    <i class="bi bi-file-earmark me-2"></i>Ver Archivos
+                                                </a>
+                                            </li>
+                                            {% if not version.update_packages %}
+                                            <li>
+                                                <a class="dropdown-item" href="{{ url_for('admin.create_update') }}?version_id={{ version.id }}">
+                                                    <i class="bi bi-plus-circle me-2"></i>Crear Update
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   onclick="return confirm('¿Eliminar la versión {{ version.version }}? Esta acción no se puede deshacer.')">
+                                                    <i class="bi bi-trash me-2"></i>Eliminar
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-tags" style="font-size: 4rem; color: #dee2e6;"></i>
+                </div>
+                <h5 class="text-muted">No hay versiones creadas</h5>
+                <p class="text-muted">Crea tu primera versión del juego para comenzar</p>
+                <a href="{{ url_for('admin.create_version') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Crear Primera Versión
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Version Detail Modals -->
+{% for version in versions %}
+<div class="modal fade" id="versionModal{{ version.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-tag me-2"></i>Versión {{ version.version }}
+                    {% if version.is_latest %}
+                        <span class="badge bg-success ms-2">Actual</span>
+                    {% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Información General</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Versión:</strong> {{ version.version }}</li>
+                            <li><strong>Estado:</strong> 
+                                {% if version.is_latest %}
+                                    <span class="badge bg-success">Activa</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Archivada</span>
+                                {% endif %}
+                            </li>
+                            <li><strong>Fecha de creación:</strong> {{ version.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</li>
+                            <li><strong>Archivos asociados:</strong> {{ version.files | length }}</li>
+                            <li><strong>Paquetes de actualización:</strong> {{ version.update_packages | length }}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Estadísticas</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Descargas:</strong> <span class="text-muted">No disponible</span></li>
+                            <li><strong>Última descarga:</strong> <span class="text-muted">No disponible</span></li>
+                            <li><strong>Tamaño total:</strong> 
+                                {% set total_size = version.files | sum(attribute='file_size') %}
+                                {% if total_size %}
+                                    {{ "%.2f"|format(total_size / 1024 / 1024) }} MB
+                                {% else %}
+                                    <span class="text-muted">No calculado</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                {% if version.release_notes %}
+                <hr>
+                <h6 class="fw-bold">Notas de la Versión</h6>
+                <div class="bg-light p-3 rounded">
+                    {{ version.release_notes | nl2br | safe }}
+                </div>
+                {% endif %}
+                
+                {% if version.files %}
+                <hr>
+                <h6 class="fw-bold">Archivos Incluidos ({{ version.files | length }})</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Archivo</th>
+                                <th>Ruta</th>
+                                <th>Tamaño</th>
+                                <th>MD5</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in version.files[:5] %}
+                            <tr>
+                                <td><code>{{ file.filename }}</code></td>
+                                <td><small class="text-muted">{{ file.relative_path }}</small></td>
+                                <td><small>{{ "%.1f"|format(file.file_size / 1024) if file.file_size else 'N/A' }} KB</small></td>
+                                <td><small class="font-monospace">{{ file.md5_hash[:8] }}...</small></td>
+                            </tr>
+                            {% endfor %}
+                            {% if version.files | length > 5 %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <small>... y {{ version.files | length - 5 }} archivos más</small>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                {% if not version.is_latest %}
+                    <a href="{{ url_for('admin.set_latest_version', version_id=version.id) }}" 
+                       class="btn btn-success"
+                       onclick="return confirm('¿Establecer {{ version.version }} como la versión actual?')">
+                        <i class="bi bi-arrow-up-circle me-1"></i>Establecer como Actual
+                    </a>
+                {% endif %}
+                <a href="{{ url_for('admin.files', version_id=version.id) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-file-earmark me-1"></i>Gestionar Archivos
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Filter and search functionality
+    function filterVersions(status) {
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const statusBadge = row.querySelector('.badge');
+            const statusText = statusBadge ? statusBadge.textContent.trim() : '';
+            
+            if (status === 'all' || statusText.toLowerCase().includes(status.toLowerCase())) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    // Auto-refresh data every 30 seconds
+    setInterval(() => {
+        // In a real implementation, you might want to refresh the data
+        console.log('Auto-refreshing version data...');
+    }, 30000);
+    
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

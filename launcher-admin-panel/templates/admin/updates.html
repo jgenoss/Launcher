@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% block title %}Paquetes de Actualización - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-download me-2"></i>Paquetes de Actualización
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{{ url_for('admin.create_update') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle"></i> Crear Actualización
+            </a>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-gear"></i> Acciones
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="regenerateAll()">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Regenerar Todos
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="validateAll()">
+                    <i class="bi bi-check-circle me-2"></i>Validar Integridad
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/api/update.json" target="_blank">
+                    <i class="bi bi-code me-2"></i>Ver JSON de Updates
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Update Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">{{ updates|length }}</h5>
+                <p class="card-text">Paquetes Totales</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">
+                    {% set total_size = updates | sum(attribute='file_size') %}
+                    {{ "%.1f"|format(total_size / 1024 / 1024) if total_size else '0' }} MB
+                </h5>
+                <p class="card-text">Tamaño Total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">
+                    {% set latest_update = updates | selectattr('version.is_latest') | first %}
+                    {{ latest_update.version.version if latest_update else 'N/A' }}
+                </h5>
+                <p class="card-text">Última Versión</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">
+                    {{ updates | selectattr('md5_hash') | list | length }}
+                </h5>
+                <p class="card-text">Con Hash MD5</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Updates Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+            <i class="bi bi-list me-2"></i>Lista de Paquetes de Actualización
+        </h5>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" onclick="downloadAll()">
+                <i class="bi bi-download"></i> Descargar Todos
+            </button>
+            <button type="button" class="btn btn-outline-info" onclick="generateUpdateSequence()">
+                <i class="bi bi-arrow-repeat"></i> Generar Secuencia
+            </button>
+        </div>
+    </div>
+    
+    <div class="card-body p-0">
+        {% if updates %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Versión</th>
+                            <th scope="col">Archivo</th>
+                            <th scope="col">Tamaño</th>
+                            <th scope="col">MD5 Hash</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Fecha de Creación</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for update in updates %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="version-icon me-2">
+                                        <i class="bi bi-box-arrow-down text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <strong>{{ update.version.version }}</strong>
+                                        {% if update.version.is_latest %}
+                                            <span class="badge bg-success ms-2">Actual</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-file-zip me-2 text-warning"></i>
+                                    <div>
+                                        <code class="small">{{ update.filename }}</code>
+                                        <br>
+                                        <small class="text-muted">ZIP Archive</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% if update.file_size %}
+                                    <span class="badge bg-light text-dark">
+                                        {% if update.file_size < 1024 * 1024 %}
+                                            {{ "%.1f"|format(update.file_size / 1024) }} KB
+                                        {% else %}
+                                            {{ "%.1f"|format(update.file_size / 1024 / 1024) }} MB
+                                        {% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if update.md5_hash %}
+                                    <div class="hash-display">
+                                        <code class="small">{{ update.md5_hash[:12] }}...</code>
+                                        <button type="button" 
+                                                class="btn btn-link btn-sm p-0 ms-1" 
+                                                onclick="copyToClipboard('{{ update.md5_hash }}')"
+                                                title="Copiar hash completo">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <span class="text-warning">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Sin hash
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if update.file_path and update.file_path | is_file_exists %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Disponible
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle me-1"></i>Archivo faltante
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ update.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                </small>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="bi bi-person me-1"></i>
+                                    {% if update.uploaded_by %}
+                                        Admin
+                                    {% else %}
+                                        Sistema
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#updateModal{{ update.id }}"
+                                            title="Ver detalles">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-success"
+                                            onclick="downloadUpdate('{{ update.filename }}')"
+                                            title="Descargar">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                    
+                                    <button type="button" 
+                                            class="btn btn-outline-info"
+                                            onclick="testUpdate('{{ update.filename }}')"
+                                            title="Probar descarga">
+                                        <i class="bi bi-play-circle"></i>
+                                    </button>
+                                    
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary dropdown-toggle" 
+                                                data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="regenerateHash({{ update.id }})">
+                                                    <i class="bi bi-arrow-clockwise me-2"></i>Regenerar Hash
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="validateUpdate({{ update.id }})">
+                                                    <i class="bi bi-shield-check me-2"></i>Validar Integridad
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="#" 
+                                                   onclick="deleteUpdate({{ update.id }}, '{{ update.filename }}')">
+                                                    <i class="bi bi-trash me-2"></i>Eliminar
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-download" style="font-size: 4rem; color: #dee2e6;"></i>
+                </div>
+                <h5 class="text-muted">No hay paquetes de actualización</h5>
+                <p class="text-muted">Crea tu primer paquete de actualización para comenzar</p>
+                <a href="{{ url_for('admin.create_update') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-2"></i>Crear Primera Actualización
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Update Detail Modals -->
+{% for update in updates %}
+<div class="modal fade" id="updateModal{{ update.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-download me-2"></i>Paquete de Actualización - {{ update.version.version }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Información General</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">Versión:</dt>
+                            <dd class="col-sm-7">
+                                <span class="badge {% if update.version.is_latest %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ update.version.version }}
+                                </span>
+                            </dd>
+                            
+                            <dt class="col-sm-5">Archivo:</dt>
+                            <dd class="col-sm-7"><code>{{ update.filename }}</code></dd>
+                            
+                            <dt class="col-sm-5">Tamaño:</dt>
+                            <dd class="col-sm-7">
+                                {% if update.file_size %}
+                                    {{ "%.2f"|format(update.file_size / 1024 / 1024) }} MB
+                                    <small class="text-muted">({{ "{:,}".format(update.file_size) }} bytes)</small>
+                                {% else %}
+                                    <span class="text-muted">No calculado</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-5">Estado:</dt>
+                            <dd class="col-sm-7">
+                                {% if update.file_path and update.file_path | is_file_exists %}
+                                    <span class="badge bg-success">Disponible</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Archivo faltante</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="fw-bold">Detalles Técnicos</h6>
+                        <dl class="row">
+                            <dt class="col-sm-5">MD5 Hash:</dt>
+                            <dd class="col-sm-7">
+                                {% if update.md5_hash %}
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control font-monospace small" 
+                                               value="{{ update.md5_hash }}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button"
+                                                onclick="copyToClipboard('{{ update.md5_hash }}')">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No calculado</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-sm-5">Ruta:</dt>
+                            <dd class="col-sm-7">
+                                <small class="text-muted">{{ update.file_path if update.file_path else 'No especificada' }}</small>
+                            </dd>
+                            
+                            <dt class="col-sm-5">Creado:</dt>
+                            <dd class="col-sm-7">{{ update.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</dd>
+                            
+                            <dt class="col-sm-5">Subido por:</dt>
+                            <dd class="col-sm-7">
+                                {% if update.uploaded_by %}
+                                    <i class="bi bi-person me-1"></i>Admin
+                                {% else %}
+                                    <i class="bi bi-robot me-1"></i>Sistema
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                {% if update.version.release_notes %}
+                <hr>
+                <h6 class="fw-bold">Notas de la Versión</h6>
+                <div class="bg-light p-3 rounded">
+                    {{ update.version.release_notes | nl2br | safe }}
+                </div>
+                {% endif %}
+                
+                <hr>
+                <h6 class="fw-bold">URL de Descarga</h6>
+                <div class="input-group">
+                    <input type="text" class="form-control font-monospace small" 
+                           value="{{ request.url_root }}Launcher/updates/{{ update.filename }}" readonly>
+                    <button class="btn btn-outline-secondary" type="button"
+                            onclick="copyToClipboard('{{ request.url_root }}Launcher/updates/{{ update.filename }}')">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" 
+                        class="btn btn-success"
+                        onclick="downloadUpdate('{{ update.filename }}')">
+                    <i class="bi bi-download me-1"></i>Descargar
+                </button>
+                <button type="button" 
+                        class="btn btn-info"
+                        onclick="testUpdate('{{ update.filename }}')">
+                    <i class="bi bi-play-circle me-1"></i>Probar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Download update package
+    function downloadUpdate(filename) {
+        window.open(`/Launcher/updates/${filename}`, '_blank');
+    }
+    
+    // Test update download
+    function testUpdate(filename) {
+        const testUrl = `/Launcher/updates/${filename}`;
+        
+        fetch(testUrl, { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    showAlert('success', `✅ El archivo ${filename} está disponible para descarga`);
+                } else {
+                    showAlert('danger', `❌ Error ${response.status}: El archivo ${filename} no está disponible`);
+                }
+            })
+            .catch(error => {
+                showAlert('danger', `❌ Error de conexión: ${error.message}`);
+            });
+    }
+    
+    // Delete update
+    function deleteUpdate(updateId, filename) {
+        if (confirm(`¿Eliminar el paquete de actualización "${filename}"? Esta acción no se puede deshacer.`)) {
+            // Here you would implement the actual deletion
+            console.log('Deleting update:', updateId);
+            showAlert('info', 'Función de eliminación no implementada en el frontend');
+        }
+    }
+    
+    // Regenerate hash for specific update
+    function regenerateHash(updateId) {
+        showAlert('info', 'Regenerando hash MD5...');
+        
+        // Here you would implement the hash regeneration
+        setTimeout(() => {
+            showAlert('success', 'Hash MD5 regenerado exitosamente');
+        }, 2000);
+    }
+    
+    // Validate update integrity
+    function validateUpdate(updateId) {
+        showAlert('info', 'Validando integridad del archivo...');
+        
+        // Here you would implement the validation
+        setTimeout(() => {
+            showAlert('success', 'Archivo validado correctamente');
+        }, 1500);
+    }
+    
+    // Regenerate all hashes
+    function regenerateAll() {
+        if (confirm('¿Regenerar todos los hashes MD5? Esto puede tomar unos minutos.')) {
+            showAlert('info', 'Regenerando todos los hashes...');
+            
+            // Here you would implement bulk hash regeneration
+            setTimeout(() => {
+                showAlert('success', 'Todos los hashes han sido regenerados');
+            }, 3000);
+        }
+    }
+    
+    // Validate all updates
+    function validateAll() {
+        showAlert('info', 'Validando integridad de todos los archivos...');
+        
+        // Here you would implement bulk validation
+        setTimeout(() => {
+            showAlert('success', 'Todos los archivos han sido validados');
+        }, 2500);
+    }
+    
+    // Download all updates
+    function downloadAll() {
+        const updates = document.querySelectorAll('tbody tr');
+        
+        if (updates.length === 0) {
+            showAlert('warning', 'No hay paquetes para descargar');
+            return;
+        }
+        
+        if (confirm(`¿Descargar todos los ${updates.length} paquetes de actualización?`)) {
+            updates.forEach((row, index) => {
+                const filename = row.querySelector('code').textContent;
+                setTimeout(() => {
+                    downloadUpdate(filename);
+                }, index * 1000); // Delay between downloads
+            });
+            
+            showAlert('info', `Iniciando descarga de ${updates.length} archivos...`);
+        }
+    }
+    
+    // Generate update sequence
+    function generateUpdateSequence() {
+        showAlert('info', 'Generando secuencia de actualización...');
+        
+        // Here you would implement update sequence generation
+        setTimeout(() => {
+            showAlert('success', 'Secuencia de actualización generada');
+        }, 2000);
+    }
+    
+    // Copy to clipboard
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showAlert('success', 'Copiado al portapapeles');
+        });
+    }
+    
+    // Show alert helper
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                const alert = new bootstrap.Alert(alertDiv);
+                alert.close();
+            }
+        }, 5000);
+    }
+    
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

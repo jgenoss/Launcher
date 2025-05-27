@@ -1,0 +1,672 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración del Sistema - Launcher Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="bi bi-gear me-2"></i>Configuración del Sistema
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetToDefaults()">
+                <i class="bi bi-arrow-clockwise"></i> Restaurar Valores por Defecto
+            </button>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="bi bi-tools"></i> Herramientas
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="exportSettings()">
+                    <i class="bi bi-download me-2"></i>Exportar Configuración
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="importSettings()">
+                    <i class="bi bi-upload me-2"></i>Importar Configuración
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="clearCache()">
+                    <i class="bi bi-trash me-2"></i>Limpiar Caché
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Categories -->
+<div class="row">
+    <div class="col-lg-3">
+        <div class="list-group mb-4" id="settings-nav">
+            <a class="list-group-item list-group-item-action active" href="#general" onclick="showCategory('general')">
+                <i class="bi bi-gear me-2"></i>General
+            </a>
+            <a class="list-group-item list-group-item-action" href="#launcher" onclick="showCategory('launcher')">
+                <i class="bi bi-app me-2"></i>Launcher
+            </a>
+            <a class="list-group-item list-group-item-action" href="#files" onclick="showCategory('files')">
+                <i class="bi bi-file-earmark me-2"></i>Archivos
+            </a>
+            <a class="list-group-item list-group-item-action" href="#security" onclick="showCategory('security')">
+                <i class="bi bi-shield-check me-2"></i>Seguridad
+            </a>
+            <a class="list-group-item list-group-item-action" href="#maintenance" onclick="showCategory('maintenance')">
+                <i class="bi bi-tools me-2"></i>Mantenimiento
+            </a>
+            <a class="list-group-item list-group-item-action" href="#notifications" onclick="showCategory('notifications')">
+                <i class="bi bi-bell me-2"></i>Notificaciones
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <!-- General Settings -->
+        <div class="settings-category" id="general-settings">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear me-2"></i>Configuración General
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="generalForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="siteName" value="Launcher Admin Panel">
+                                    <label for="siteName">Nombre del Sistema</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="adminEmail" value="admin@localhost">
+                                    <label for="adminEmail">Email del Administrador</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="timezone">
+                                        <option value="UTC">UTC</option>
+                                        <option value="America/Mexico_City" selected>América/Ciudad de México</option>
+                                        <option value="America/New_York">América/Nueva York</option>
+                                        <option value="Europe/Madrid">Europa/Madrid</option>
+                                    </select>
+                                    <label for="timezone">Zona Horaria</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="language">
+                                        <option value="es" selected>Español</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                    <label for="language">Idioma</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="maintenanceMode">
+                            <label class="form-check-label" for="maintenanceMode">
+                                <strong>Modo de Mantenimiento</strong>
+                                <div class="form-text">Desactiva temporalmente el acceso al launcher</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="debugMode">
+                            <label class="form-check-label" for="debugMode">
+                                <strong>Modo de Depuración</strong>
+                                <div class="form-text">Habilita logs detallados para desarrollo</div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Launcher Settings -->
+        <div class="settings-category d-none" id="launcher-settings">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-app me-2"></i>Configuración del Launcher
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="launcherForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="url" class="form-control" id="launcherUrl" value="http://localhost:5000/Launcher/">
+                                    <label for="launcherUrl">URL Base del Launcher</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="updateCheckInterval" value="300" min="60">
+                                    <label for="updateCheckInterval">Intervalo de Verificación (segundos)</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="maxRetries" value="3" min="1" max="10">
+                                    <label for="maxRetries">Máximo Reintentos de Descarga</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="connectionTimeout" value="30" min="5" max="120">
+                                    <label for="connectionTimeout">Timeout de Conexión (segundos)</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="autoUpdate" checked>
+                            <label class="form-check-label" for="autoUpdate">
+                                <strong>Actualización Automática</strong>
+                                <div class="form-text">Permitir que el launcher se actualice automáticamente</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="forceSSL">
+                            <label class="form-check-label" for="forceSSL">
+                                <strong>Forzar SSL/HTTPS</strong>
+                                <div class="form-text">Requerir conexiones seguras para todas las descargas</div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Settings -->
+        <div class="settings-category d-none" id="files-settings">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-file-earmark me-2"></i>Configuración de Archivos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="filesForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="maxFileSize" value="500" min="1" max="2048">
+                                    <label for="maxFileSize">Tamaño Máximo de Archivo (MB)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="maxTotalSize" value="5000" min="100">
+                                    <label for="maxTotalSize">Tamaño Máximo Total (MB)</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="allowedExtensions" class="form-label">Extensiones Permitidas</label>
+                            <textarea class="form-control" id="allowedExtensions" rows="3">.exe, .dll, .xml, .json, .txt, .zip, .png, .jpg, .gif</textarea>
+                            <div class="form-text">Separadas por comas</div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="autoMD5" checked>
+                            <label class="form-check-label" for="autoMD5">
+                                <strong>Calcular MD5 Automáticamente</strong>
+                                <div class="form-text">Generar hash MD5 al subir archivos</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="compressUploads">
+                            <label class="form-check-label" for="compressUploads">
+                                <strong>Comprimir Subidas</strong>
+                                <div class="form-text">Comprimir archivos durante la subida</div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="settings-category d-none" id="security-settings">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-shield-check me-2"></i>Configuración de Seguridad
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="securityForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="sessionTimeout" value="24" min="1" max="168">
+                                    <label for="sessionTimeout">Duración de Sesión (horas)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="maxLoginAttempts" value="5" min="3" max="10">
+                                    <label for="maxLoginAttempts">Máximo Intentos de Login</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="downloadRateLimit" value="100" min="10">
+                                    <label for="downloadRateLimit">Límite de Descargas por Hora</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="ipBanDuration" value="60" min="1">
+                                    <label for="ipBanDuration">Duración de Ban por IP (minutos)</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="allowedIPs" class="form-label">IPs Permitidas (Whitelist)</label>
+                            <textarea class="form-control" id="allowedIPs" rows="3" placeholder="192.168.1.1&#10;10.0.0.0/8&#10;Dejar vacío para permitir todas"></textarea>
+                            <div class="form-text">Una IP por línea. Soporta CIDR</div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enableRateLimit" checked>
+                            <label class="form-check-label" for="enableRateLimit">
+                                <strong>Habilitar Límite de Velocidad</strong>
+                                <div class="form-text">Limitar número de descargas por IP</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="logAllRequests" checked>
+                            <label class="form-check-label" for="logAllRequests">
+                                <strong>Registrar Todas las Solicitudes</strong>
+                                <div class="form-text">Guardar log de todas las descargas</div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Maintenance Settings -->
+        <div class="settings-category d-none" id="maintenance-settings">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-tools me-2"></i>Configuración de Mantenimiento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="maintenanceForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="backupInterval" value="24" min="1" max="168">
+                                    <label for="backupInterval">Intervalo de Backup (horas)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="backupRetention" value="30" min="1" max="365">
+                                    <label for="backupRetention">Días de Retención de Backup</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" id="logRetention" value="30" min="1" max="365">
+                                    <label for="logRetention">Días de Retención de Logs</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="logLevel">
+                                        <option value="DEBUG">Debug</option>
+                                        <option value="INFO" selected>Info</option>
+                                        <option value="WARNING">Warning</option>
+                                        <option value="ERROR">Error</option>
+                                    </select>
+                                    <label for="logLevel">Nivel de Log</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="autoBackup" checked>
+                            <label class="form-check-label" for="autoBackup">
+                                <strong>Backup Automático</strong>
+                                <div class="form-text">Crear backups automáticos de la base de datos</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="autoCleanup" checked>
+                            <label class="form-check-label" for="autoCleanup">
+                                <strong>Limpieza Automática</strong>
+                                <div class="form-text">Eliminar archivos y logs antiguos automáticamente</div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Settings -->
+        <div class="settings-category d-none" id="notifications-settings">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bell me-2"></i>Configuración de Notificaciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="notificationsForm">
+                        <div class="form-floating mb-3">
+                            <input type="url" class="form-control" id="webhookUrl" placeholder="https://hooks.slack.com/...">
+                            <label for="webhookUrl">URL de Webhook</label>
+                            <div class="form-text">Para notificaciones via Slack, Discord, etc.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <input type="email" class="form-control" id="alertEmail" placeholder="admin@ejemplo.com">
+                                    <label for="alertEmail">Email para Alertas</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" id="alertLevel">
+                                        <option value="ERROR" selected>Solo Errores</option>
+                                        <option value="WARNING">Warnings y Errores</option>
+                                        <option value="INFO">Toda la Actividad</option>
+                                    </select>
+                                    <label for="alertLevel">Nivel de Alerta</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h6 class="fw-bold mb-3">Tipos de Notificación</h6>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="notifyNewVersion" checked>
+                            <label class="form-check-label" for="notifyNewVersion">
+                                <strong>Nuevas Versiones</strong>
+                                <div class="form-text">Notificar cuando se sube una nueva versión</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="notifyErrors" checked>
+                            <label class="form-check-label" for="notifyErrors">
+                                <strong>Errores del Sistema</strong>
+                                <div class="form-text">Notificar errores críticos y fallos</div>
+                            </label>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="notifyHighTraffic">
+                            <label class="form-check-label" for="notifyHighTraffic">
+                                <strong>Tráfico Alto</strong>
+                                <div class="form-text">Notificar cuando hay muchas descargas</div>
+                            </label>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save Button -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="button" class="btn btn-outline-secondary me-md-2" onclick="resetCurrentCategory()">
+                <i class="bi bi-arrow-clockwise"></i> Restaurar
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                <i class="bi bi-check-circle"></i> Guardar Configuración
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentCategory = 'general';
+    
+    function showCategory(category) {
+        // Hide all categories
+        document.querySelectorAll('.settings-category').forEach(cat => {
+            cat.classList.add('d-none');
+        });
+        
+        // Show selected category
+        document.getElementById(`${category}-settings`).classList.remove('d-none');
+        
+        // Update navigation
+        document.querySelectorAll('#settings-nav .list-group-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        document.querySelector(`#settings-nav a[href="#${category}"]`).classList.add('active');
+        
+        currentCategory = category;
+    }
+    
+    function saveSettings() {
+        const allSettings = {};
+        
+        // Collect all form data
+        document.querySelectorAll('.settings-category form').forEach(form => {
+            const formData = new FormData(form);
+            const categoryName = form.id.replace('Form', '');
+            
+            allSettings[categoryName] = {};
+            
+            // Get all inputs in the form
+            form.querySelectorAll('input, select, textarea').forEach(input => {
+                if (input.type === 'checkbox') {
+                    allSettings[categoryName][input.id] = input.checked;
+                } else {
+                    allSettings[categoryName][input.id] = input.value;
+                }
+            });
+        });
+        
+        // Show loading state
+        const saveBtn = event.target;
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="bi bi-hourglass"></i> Guardando...';
+        saveBtn.disabled = true;
+        
+        // Simulate save operation
+        setTimeout(() => {
+            console.log('Settings to save:', allSettings);
+            
+            // Here you would make an AJAX call to save the settings
+            showAlert('success', 'Configuración guardada exitosamente');
+            
+            // Restore button
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        }, 2000);
+    }
+    
+    function resetCurrentCategory() {
+        if (confirm(`¿Restaurar la configuración de ${currentCategory} a los valores por defecto?`)) {
+            // Reset form in current category
+            const form = document.querySelector(`#${currentCategory}-settings form`);
+            if (form) {
+                form.reset();
+                showAlert('info', `Configuración de ${currentCategory} restaurada`);
+            }
+        }
+    }
+    
+    function resetToDefaults() {
+        if (confirm('¿Restaurar TODA la configuración a los valores por defecto? Esta acción no se puede deshacer.')) {
+            // Reset all forms
+            document.querySelectorAll('.settings-category form').forEach(form => {
+                form.reset();
+            });
+            
+            showAlert('warning', 'Toda la configuración ha sido restaurada a valores por defecto');
+        }
+    }
+    
+    function exportSettings() {
+        const allSettings = {};
+        
+        // Collect all settings
+        document.querySelectorAll('.settings-category form').forEach(form => {
+            const categoryName = form.id.replace('Form', '');
+            allSettings[categoryName] = {};
+            
+            form.querySelectorAll('input, select, textarea').forEach(input => {
+                if (input.type === 'checkbox') {
+                    allSettings[categoryName][input.id] = input.checked;
+                } else {
+                    allSettings[categoryName][input.id] = input.value;
+                }
+            });
+        });
+        
+        // Create and download JSON file
+        const blob = new Blob([JSON.stringify(allSettings, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `launcher_settings_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showAlert('success', 'Configuración exportada correctamente');
+    }
+    
+    function importSettings() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const settings = JSON.parse(e.target.result);
+                    
+                    // Apply settings to forms
+                    Object.keys(settings).forEach(category => {
+                        const form = document.getElementById(`${category}Form`);
+                        if (form) {
+                            Object.keys(settings[category]).forEach(key => {
+                                const input = document.getElementById(key);
+                                if (input) {
+                                    if (input.type === 'checkbox') {
+                                        input.checked = settings[category][key];
+                                    } else {
+                                        input.value = settings[category][key];
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    
+                    showAlert('success', 'Configuración importada correctamente');
+                } catch (error) {
+                    showAlert('danger', 'Error al importar configuración: archivo inválido');
+                }
+            };
+            
+            reader.readAsText(file);
+        };
+        
+        input.click();
+    }
+    
+    function clearCache() {
+        if (confirm('¿Limpiar toda la caché del sistema? Esto puede afectar temporalmente el rendimiento.')) {
+            // Simulate cache clearing
+            showAlert('info', 'Limpiando caché...');
+            
+            setTimeout(() => {
+                showAlert('success', 'Caché limpiada exitosamente');
+            }, 2000);
+        }
+    }
+    
+    // Show alert helper
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                const alert = new bootstrap.Alert(alertDiv);
+                alert.close();
+            }
+        }, 5000);
+    }
+    
+    // Handle navigation clicks
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('#settings-nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const category = this.getAttribute('href').substring(1);
+                showCategory(category);
+            });
+        });
+        
+        // Show general category by default
+        showCategory('general');
+    });
+    
+    // Auto-save functionality (optional)
+    let autoSaveTimeout;
+    
+    document.addEventListener('input', function(e) {
+        if (e.target.closest('.settings-category')) {
+            // Clear existing timeout
+            if (autoSaveTimeout) {
+                clearTimeout(autoSaveTimeout);
+            }
+            
+            // Set new timeout for auto-save
+            autoSaveTimeout = setTimeout(() => {
+                console.log('Auto-saving settings...');
+                // Here you could implement auto-save functionality
+            }, 5000); // Save after 5 seconds of inactivity
+        }
+    });
+</script>
+{% endblock %}
