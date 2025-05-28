@@ -126,7 +126,7 @@
                     </button>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ url_for('admin.download_logs') }}">Ver todos los logs</a></li>
-                        <li><a class="dropdown-item" href="/api/stats" target="_blank">API de estadísticas</a></li>
+                        <li><a class="dropdown-item" href="./api/stats" target="_blank">API de estadísticas</a></li>
                     </ul>
                 </div>
             </div>
@@ -296,7 +296,7 @@
     // Load Recent Activity
     async function loadRecentActivity() {
         try {
-            const response = await fetch('/admin/api/stats');
+            const response = await fetch('/api/stats');
             const data = await response.json();
             
             // This would need to be implemented in the backend

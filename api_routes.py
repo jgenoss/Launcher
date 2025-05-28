@@ -3,6 +3,7 @@ from models import GameVersion, GameFile, UpdatePackage, LauncherVersion, NewsMe
 import os
 import json
 from datetime import datetime
+from pprint import pprint 
 
 api_bp = Blueprint('api', __name__)
 
@@ -143,8 +144,9 @@ def download_update(filename):
 def download_launcher_updater():
     """Endpoint para descargar el actualizador del launcher"""
     try:
-        file_path = os.path.join('static/downloads', 'LauncherUpdater.exe')
-        
+        file_name = 'LauncherUpdater.exe'
+        folder_path = os.path.join(current_app.root_path, 'static', 'downloads')
+        file_path = os.path.join(folder_path, file_name)
         if not os.path.exists(file_path):
             log_download('LauncherUpdater.exe', 'launcher_updater', success=False)
             return jsonify({"error": "Launcher updater not found"}), 404
@@ -153,6 +155,24 @@ def download_launcher_updater():
         return send_from_directory('static/downloads', 'LauncherUpdater.exe')
     except Exception as e:
         log_download('LauncherUpdater.exe', 'launcher_updater', success=False)
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/PBConfig.exe')
+def download_Config():
+    """Endpoint para descargar el PBConfig"""
+    try:
+        file_name = 'PBConfig.exe'
+        folder_path = os.path.join(current_app.root_path, 'static', 'downloads')
+        file_path = os.path.join(folder_path, file_name)
+
+        if not os.path.exists(file_path):
+            log_download('PBConfig.exe', 'PBConfig', success=False)
+            return jsonify({"error": "Launcher updater not found"}), 404
+        
+        log_download('PBConfig.exe', 'PBConfig')
+        return send_from_directory('static/downloads', 'PBConfig.exe')
+    except Exception as e:
+        log_download('PBConfig.exe', 'PBConfig', success=False)
         return jsonify({"error": str(e)}), 500
 
 @api_bp.route('/status')

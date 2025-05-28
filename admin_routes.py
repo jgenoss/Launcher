@@ -250,8 +250,7 @@ def create_update():
             update_file.save(file_path)
             
             # Calcular MD5 y tamaño
-            from utils import calculate_file_hash
-            md5_hash = calculate_file_hash(file_path, 'md5')
+            md5_hash = calculate_md5(file_path)
             file_size = os.path.getsize(file_path)
             
             # Verificar si ya existe un paquete para esta versión
@@ -417,7 +416,7 @@ def toggle_message(message_id):
 @admin_bp.route('/logs')
 @login_required
 def download_logs():
-    """Ver logs de descarga"""
+    """Ver logs de descarga con estadísticas corregidas"""
     page = request.args.get('page', 1, type=int)
     file_type = request.args.get('file_type', '')
     
@@ -429,11 +428,157 @@ def download_logs():
         page=page, per_page=100, error_out=False
     )
     
-    # Tipos de archivo únicos para el filtro
-    file_types = db.session.query(DownloadLog.file_type).distinct().all()
-    file_types = [ft[0] for ft in file_types if ft[0]]
+    # ESTADÍSTICAS CORREGIDAS
+    try:
+        # Total de logs
+        total_logs = DownloadLog.query.count()
+        
+        # Logs exitosos y fallidos
+        successful_logs = DownloadLog.query.filter_by(success=True).count()
+        failed_logs = DownloadLog.query.filter_by(success=False).count()
+        
+        # IPs únicas - CORREGIR PROBLEMA DE CONTEO
+        unique_ips_query = db.session.query(DownloadLog.ip_address).distinct()
+        unique_ips_count = unique_ips_query.count()
+        
+        # Tipos de archivo únicos para el filtro
+        file_types_query = db.session.query(DownloadLog.file_type).distinct().filter(
+            DownloadLog.file_type.isnot(None)
+        ).all()
+        file_types = [ft[0] for ft in file_types_query if ft[0]]
+        
+        # Estadísticas adicionales para la página
+        stats = {
+            'total_logs': total_logs,
+            'successful_logs': successful_logs,
+            'failed_logs': failed_logs,
+            'unique_ips': unique_ips_count,
+            'success_rate': round((successful_logs / total_logs * 100), 2) if total_logs > 0 else 0
+        }
+        
+        current_app.logger.info(f"Estadísticas de logs calculadas: {stats}")
+        
+    except Exception as e:
+        current_app.logger.error(f"Error calculando estadísticas de logs: {e}")
+        stats = {
+            'total_logs': 0,
+            'successful_logs': 0,
+            'failed_logs': 0,
+            'unique_ips': 0,
+            'success_rate': 0
+        }
+        file_types = []
     
-    return render_template('admin/logs.html', logs=logs, file_types=file_types, current_file_type=file_type)
+    return render_template('admin/logs.html', logs=logs, file_types=file_types, current_file_type=file_type, stats=stats)
+
+# 2. NUEVA RUTA PARA LIMPIAR LOGS ANTIGUOS
+@admin_bp.route('/logs/cleanup', methods=['POST'])
+@login_required
+def cleanup_old_logs():
+    """Limpiar logs antiguos"""
+    try:
+        # Obtener parámetros
+        days = request.form.get('days', 30, type=int)
+        confirm = request.form.get('confirm', 'false')
+        
+        if confirm != 'true':
+            flash('Debes confirmar la acción para eliminar logs antiguos', 'error')
+            return redirect(url_for('admin.download_logs'))
+        
+        # Calcular fecha límite
+        from datetime import datetime, timedelta
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Contar logs que se van a eliminar
+        logs_to_delete = DownloadLog.query.filter(
+            DownloadLog.created_at < cutoff_date
+        ).count()
+        
+        if logs_to_delete == 0:
+            flash(f'No hay logs anteriores a {days} días para eliminar', 'info')
+            return redirect(url_for('admin.download_logs'))
+        
+        # Eliminar logs antiguos
+        deleted_count = DownloadLog.query.filter(
+            DownloadLog.created_at < cutoff_date
+        ).delete()
+        
+        db.session.commit()
+        
+        current_app.logger.info(f"Eliminados {deleted_count} logs antiguos por usuario {current_user.username}")
+        flash(f'{deleted_count} logs antiguos eliminados exitosamente', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error limpiando logs antiguos: {e}")
+        flash(f'Error al limpiar logs: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.download_logs'))
+
+@admin_bp.route('/logs/export')
+@login_required
+def export_logs():
+    """Exportar logs como CSV"""
+    try:
+        from datetime import datetime
+        import csv
+        from io import StringIO
+        
+        # Obtener parámetros de filtro
+        file_type = request.args.get('file_type', '')
+        days = request.args.get('days', 30, type=int)
+        
+        # Crear query
+        query = DownloadLog.query
+        
+        if file_type:
+            query = query.filter_by(file_type=file_type)
+        
+        if days > 0:
+            from datetime import timedelta
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(DownloadLog.created_at >= cutoff_date)
+        
+        # Obtener logs
+        logs = query.order_by(DownloadLog.created_at.desc()).all()
+        
+        # Crear CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Headers
+        writer.writerow([
+            'Fecha', 'Hora', 'IP', 'Archivo', 'Tipo', 'Estado', 'User Agent'
+        ])
+        
+        # Datos
+        for log in logs:
+            writer.writerow([
+                log.created_at.strftime('%Y-%m-%d'),
+                log.created_at.strftime('%H:%M:%S'),
+                log.ip_address,
+                log.file_requested,
+                log.file_type or 'N/A',
+                'Exitoso' if log.success else 'Fallido',
+                log.user_agent or 'N/A'
+            ])
+        
+        # Preparar respuesta
+        from flask import make_response
+        
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=logs_export_{datetime.now().strftime("%Y%m%d_%H%M")}.csv'
+        
+        current_app.logger.info(f"Logs exportados por usuario {current_user.username}")
+        
+        return response
+        
+    except Exception as e:
+        current_app.logger.error(f"Error exportando logs: {e}")
+        flash(f'Error al exportar logs: {str(e)}', 'error')
+        return redirect(url_for('admin.download_logs'))
 
 @admin_bp.route('/settings')
 @login_required
@@ -651,35 +796,61 @@ def delete_launcher(launcher_id):
     
     return redirect(url_for('admin.launcher_versions'))
 
-@admin_bp.route('/api/stats')
+@admin_bp.route('/logs/stats')
 @login_required
-def api_stats():
-    """API para estadísticas en tiempo real"""
+def logs_stats():
+    """API para estadísticas de logs en tiempo real"""
     try:
-        # Estadísticas de los últimos 30 días
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        from datetime import datetime, timedelta
         
-        # Descargas por día
-        daily_stats = db.session.query(
-            db.func.date(DownloadLog.created_at).label('date'),
+        # Estadísticas de la última hora
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        
+        last_hour_downloads = DownloadLog.query.filter(
+            DownloadLog.created_at >= one_hour_ago
+        ).count()
+        
+        last_hour_unique_ips = db.session.query(DownloadLog.ip_address).distinct().filter(
+            DownloadLog.created_at >= one_hour_ago
+        ).count()
+        
+        # Archivos más populares (últimas 24 horas)
+        twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+        
+        popular_files = db.session.query(
+            DownloadLog.file_requested,
             db.func.count(DownloadLog.id).label('count')
         ).filter(
-            DownloadLog.created_at >= thirty_days_ago
+            DownloadLog.created_at >= twenty_four_hours_ago
         ).group_by(
-            db.func.date(DownloadLog.created_at)
-        ).order_by('date').all()
+            DownloadLog.file_requested
+        ).order_by(
+            db.func.count(DownloadLog.id).desc()
+        ).limit(5).all()
         
-        # Descargas por tipo
-        type_stats = db.session.query(
-            DownloadLog.file_type,
-            db.func.count(DownloadLog.id).label('count')
-        ).filter(
-            DownloadLog.created_at >= thirty_days_ago
-        ).group_by(DownloadLog.file_type).all()
+        # Actividad por hora (últimas 24 horas)
+        hourly_activity = []
+        for i in range(24):
+            hour_start = datetime.utcnow().replace(minute=0, second=0, microsecond=0) - timedelta(hours=i)
+            hour_end = hour_start + timedelta(hours=1)
+            
+            count = DownloadLog.query.filter(
+                DownloadLog.created_at >= hour_start,
+                DownloadLog.created_at < hour_end
+            ).count()
+            
+            hourly_activity.append({
+                'hour': hour_start.strftime('%H:00'),
+                'count': count
+            })
         
         return jsonify({
-            'daily_downloads': [{'date': str(stat.date), 'count': stat.count} for stat in daily_stats],
-            'downloads_by_type': [{'type': stat[0], 'count': stat[1]} for stat in type_stats]
+            'last_hour_downloads': last_hour_downloads,
+            'last_hour_unique_ips': last_hour_unique_ips,
+            'popular_files': [{'file': f[0], 'count': f[1]} for f in popular_files],
+            'hourly_activity': list(reversed(hourly_activity))
         })
+        
     except Exception as e:
+        current_app.logger.error(f"Error obteniendo estadísticas de logs: {e}")
         return jsonify({'error': str(e)}), 500

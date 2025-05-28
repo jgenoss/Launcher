@@ -75,7 +75,7 @@ def initialize_database():
             logger.info("Base de datos inicializada correctamente")
             
             # Crear usuario administrador por defecto
-            create_admin_user()
+            #create_admin_user()
             
             return True
     except Exception as e:

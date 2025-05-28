@@ -146,7 +146,7 @@ def create_admin_user():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        create_admin_user()
+        #create_admin_user()
     
     # Buscar puerto disponible si 5000 está ocupado
     import socket

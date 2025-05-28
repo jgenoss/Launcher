@@ -19,15 +19,17 @@
             </button>
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="/api/message.json" target="_blank">
-                    <i class="bi bi-code me-2"></i>Ver JSON de Mensajes
-                </a></li>
+                        <i class="bi bi-code me-2"></i>Ver JSON de Mensajes
+                    </a></li>
                 <li><a class="dropdown-item" href="#" onclick="toggleAllMessages()">
-                    <i class="bi bi-toggle-on me-2"></i>Alternar Todos
-                </a></li>
-                <li><hr class="dropdown-divider"></li>
+                        <i class="bi bi-toggle-on me-2"></i>Alternar Todos
+                    </a></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
                 <li><a class="dropdown-item" href="#" onclick="exportMessages()">
-                    <i class="bi bi-download me-2"></i>Exportar Mensajes
-                </a></li>
+                        <i class="bi bi-download me-2"></i>Exportar Mensajes
+                    </a></li>
             </ul>
         </div>
     </div>
@@ -84,10 +86,7 @@
                     <span class="input-group-text">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input type="text" 
-                           class="form-control" 
-                           placeholder="Buscar mensajes..."
-                           id="searchInput">
+                    <input type="text" class="form-control" placeholder="Buscar mensajes..." id="searchInput">
                 </div>
             </div>
             <div class="col-md-3">
@@ -125,7 +124,8 @@
             <button type="button" class="btn btn-outline-secondary" onclick="previewInLauncher()">
                 <i class="bi bi-eye"></i> Vista Previa
             </button>
-            <button type="button" class="btn btn-outline-success" onclick="activateSelected()" disabled id="activateBtn">
+            <button type="button" class="btn btn-outline-success" onclick="activateSelected()" disabled
+                id="activateBtn">
                 <i class="bi bi-toggle-on"></i> Activar
             </button>
             <button type="button" class="btn btn-outline-danger" onclick="deleteSelected()" disabled id="deleteBtn">
@@ -136,169 +136,165 @@
 
     <div class="card-body p-0">
         {% if messages %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="messagesTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col" style="width: 50px;">
-                                <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
-                            </th>
-                            <th scope="col">Tipo</th>
-                            <th scope="col">Mensaje</th>
-                            <th scope="col">Estado</th>
-                            <th scope="col">Prioridad</th>
-                            <th scope="col">Fecha de Creación</th>
-                            <th scope="col">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for message in messages %}
-                        <tr data-type="{{ message.type.lower() }}" 
-                            data-status="{{ 'active' if message.is_active else 'inactive' }}"
-                            data-message="{{ message.message.lower() }}">
-                            <td>
-                                <input type="checkbox" class="form-check-input message-checkbox" value="{{ message.id }}">
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="type-icon me-2">
-                                        {% if message.type == 'Actualización' %}
-                                            <i class="bi bi-arrow-up-circle text-info"></i>
-                                        {% elif message.type == 'Noticia' %}
-                                            <i class="bi bi-newspaper text-primary"></i>
-                                        {% elif message.type == 'Mantenimiento' %}
-                                            <i class="bi bi-tools text-warning"></i>
-                                        {% elif message.type == 'Evento' %}
-                                            <i class="bi bi-calendar-event text-success"></i>
-                                        {% else %}
-                                            <i class="bi bi-chat-dots text-secondary"></i>
-                                        {% endif %}
-                                    </div>
-                                    <span class="badge {% if message.type == 'Actualización' %}bg-info{% elif message.type == 'Noticia' %}bg-primary{% elif message.type == 'Mantenimiento' %}bg-warning{% elif message.type == 'Evento' %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {{ message.type }}
-                                    </span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="message-content">
-                                    <div class="message-text">
-                                        {{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}
-                                    </div>
-                                    {% if message.message|length > 100 %}
-                                    <button type="button" 
-                                            class="btn btn-link btn-sm p-0 text-decoration-none" 
-                                            onclick="toggleFullMessage(this, '{{ message.message | replace("'", "\\'") }}')"
-                                            data-full-text="{{ message.message | replace('"', '&quot;') }}">
-                                        Ver más
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </td>
-                            <td>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="status{{ message.id }}"
-                                           {% if message.is_active %}checked{% endif %}
-                                           onchange="toggleMessageStatus({{ message.id }}, this.checked)">
-                                    <label class="form-check-label" for="status{{ message.id }}">
-                                        <span class="badge {% if message.is_active %}bg-success{% else %}bg-secondary{% endif %}" id="statusBadge{{ message.id }}">
-                                            {% if message.is_active %}Activo{% else %}Inactivo{% endif %}
-                                        </span>
-                                    </label>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="priority-display">
-                                    <span class="badge bg-light text-dark">
-                                        {{ message.priority }}
-                                    </span>
-                                    <div class="priority-stars">
-                                        {% for i in range(1, 6) %}
-                                            {% if i <= message.priority %}
-                                                <i class="bi bi-star-fill text-warning small"></i>
-                                            {% else %}
-                                                <i class="bi bi-star text-muted small"></i>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <small class="text-muted">
-                                    {{ message.created_at.strftime('%d/%m/%Y %H:%M') }}
-                                </small>
-                                <br>
-                                <small class="text-muted">
-                                    <i class="bi bi-person me-1"></i>
-                                    {% if message.created_by %}
-                                        Admin
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="messagesTable">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" style="width: 50px;">
+                            <input type="checkbox" class="form-check-input" id="selectAllCheckbox">
+                        </th>
+                        <th scope="col">Tipo</th>
+                        <th scope="col">Mensaje</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Prioridad</th>
+                        <th scope="col">Fecha de Creación</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for message in messages %}
+                    <tr data-type="{{ message.type.lower() }}"
+                        data-status="{{ 'active' if message.is_active else 'inactive' }}"
+                        data-message="{{ message.message.lower() }}">
+                        <td>
+                            <input type="checkbox" class="form-check-input message-checkbox" value="{{ message.id }}">
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="type-icon me-2">
+                                    {% if message.type == 'Actualización' %}
+                                    <i class="bi bi-arrow-up-circle text-info"></i>
+                                    {% elif message.type == 'Noticia' %}
+                                    <i class="bi bi-newspaper text-primary"></i>
+                                    {% elif message.type == 'Mantenimiento' %}
+                                    <i class="bi bi-tools text-warning"></i>
+                                    {% elif message.type == 'Evento' %}
+                                    <i class="bi bi-calendar-event text-success"></i>
                                     {% else %}
-                                        Sistema
+                                    <i class="bi bi-chat-dots text-secondary"></i>
                                     {% endif %}
-                                </small>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button type="button" 
-                                            class="btn btn-outline-primary" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#messageModal{{ message.id }}"
-                                            title="Ver detalles">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-
-                                    <button type="button" 
-                                            class="btn btn-outline-success"
-                                            onclick="duplicateMessage({{ message.id }})"
-                                            title="Duplicar">
-                                        <i class="bi bi-copy"></i>
-                                    </button>
-
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <button type="button" 
-                                                class="btn btn-outline-secondary dropdown-toggle" 
-                                                data-bs-toggle="dropdown">
-                                            <i class="bi bi-three-dots"></i>
-                                        </button>
-                                        <ul class="dropdown-menu">
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="editMessage({{ message.id }})">
-                                                    <i class="bi bi-pencil me-2"></i>Editar
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="changePriority({{ message.id }}, {{ message.priority }})">
-                                                    <i class="bi bi-arrow-up-down me-2"></i>Cambiar Prioridad
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item text-danger" href="#" 
-                                                   onclick="deleteMessage({{ message.id }})">
-                                                    <i class="bi bi-trash me-2"></i>Eliminar
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    </div>
                                 </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                <span
+                                    class="badge {% if message.type == 'Actualización' %}bg-info{% elif message.type == 'Noticia' %}bg-primary{% elif message.type == 'Mantenimiento' %}bg-warning{% elif message.type == 'Evento' %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ message.type }}
+                                </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="message-content">
+                                <div class="message-text">
+                                    {{ message.message[:100] }}{% if message.message|length > 100 %}...{% endif %}
+                                </div>
+                                {% if message.message|length > 100 %}
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                                    onclick="toggleFullMessage(this, '{{ message.message | replace("'", "\\'") }}')"
+                                    data-full-text="{{ message.message | replace('"', ' &quot;') }}">
+                                    Ver más
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="status{{ message.id }}" {% if
+                                    message.is_active %}checked{% endif %}
+                                    onchange="toggleMessageStatus({{ message.id }}, this.checked)">
+                                <label class="form-check-label" for="status{{ message.id }}">
+                                    <span
+                                        class="badge {% if message.is_active %}bg-success{% else %}bg-secondary{% endif %}"
+                                        id="statusBadge{{ message.id }}">
+                                        {% if message.is_active %}Activo{% else %}Inactivo{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="priority-display">
+                                <span class="badge bg-light text-dark">
+                                    {{ message.priority }}
+                                </span>
+                                <div class="priority-stars">
+                                    {% for i in range(1, 6) %}
+                                    {% if i <= message.priority %} <i class="bi bi-star-fill text-warning small"></i>
+                                        {% else %}
+                                        <i class="bi bi-star text-muted small"></i>
+                                        {% endif %}
+                                        {% endfor %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                {{ message.created_at.strftime('%d/%m/%Y %H:%M') }}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                <i class="bi bi-person me-1"></i>
+                                {% if message.created_by %}
+                                Admin
+                                {% else %}
+                                Sistema
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                    data-bs-target="#messageModal{{ message.id }}" title="Ver detalles">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+
+                                <button type="button" class="btn btn-outline-success"
+                                    onclick="duplicateMessage({{ message.id }})" title="Duplicar">
+                                    <i class="bi bi-copy"></i>
+                                </button>
+
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-secondary dropdown-toggle"
+                                        data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="editMessage({{ message.id }})">
+                                                <i class="bi bi-pencil me-2"></i>Editar
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#"
+                                                onclick="changePriority({{ message.id }}, {{ message.priority }})">
+                                                <i class="bi bi-arrow-up-down me-2"></i>Cambiar Prioridad
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="#"
+                                                onclick="deleteMessage({{ message.id }})">
+                                                <i class="bi bi-trash me-2"></i>Eliminar
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-            <div class="text-center py-5">
-                <div class="mb-3">
-                    <i class="bi bi-chat-dots" style="font-size: 4rem; color: #dee2e6;"></i>
-                </div>
-                <h5 class="text-muted">No hay mensajes</h5>
-                <p class="text-muted">Crea tu primer mensaje para los usuarios del launcher</p>
-                <a href="{{ url_for('admin.create_message') }}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle me-2"></i>Crear Primer Mensaje
-                </a>
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-chat-dots" style="font-size: 4rem; color: #dee2e6;"></i>
             </div>
+            <h5 class="text-muted">No hay mensajes</h5>
+            <p class="text-muted">Crea tu primer mensaje para los usuarios del launcher</p>
+            <a href="{{ url_for('admin.create_message') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Crear Primer Mensaje
+            </a>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -343,7 +339,7 @@
                                         {% else %}
                                             <i class="bi bi-star text-muted"></i>
                                         {% endif %}
-                                    </div>
+                                    {% endfor %}
                                 </div>
                             </dd>
 
@@ -385,14 +381,10 @@
 }</code></pre>
             </div>
             <div class="modal-footer">
-                <button type="button" 
-                        class="btn btn-success"
-                        onclick="duplicateMessage({{ message.id }})">
+                <button type="button" class="btn btn-success" onclick="duplicateMessage({{ message.id }})">
                     <i class="bi bi-copy me-1"></i>Duplicar
                 </button>
-                <button type="button" 
-                        class="btn btn-primary"
-                        onclick="editMessage({{ message.id }})">
+                <button type="button" class="btn btn-primary" onclick="editMessage({{ message.id }})">
                     <i class="bi bi-pencil me-1"></i>Editar
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -400,7 +392,6 @@
         </div>
     </div>
 </div>
-{% endfor %}
 {% endfor %}
 
 {% endblock %}
@@ -532,13 +523,13 @@
     }
 
     // Checkbox selection
-    document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+    document.getElementById('selectAllCheckbox').addEventListener('change', function () {
         const checkboxes = document.querySelectorAll('.message-checkbox');
         checkboxes.forEach(cb => cb.checked = this.checked);
         updateActionButtons();
     });
 
-    document.addEventListener('change', function(e) {
+    document.addEventListener('change', function (e) {
         if (e.target.classList.contains('message-checkbox')) {
             updateActionButtons();
         }
@@ -641,8 +632,8 @@
             }
         });
 
-        const csv = 'Type,Message,Status,Date\n' + 
-                    messages.map(m => `"${m.type}","${m.message}","${m.status}","${m.date}"`).join('\n');
+        const csv = 'Type,Message,Status,Date\n' +
+            messages.map(m => `"${m.type}","${m.message}","${m.status}","${m.date}"`).join('\n');
 
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);

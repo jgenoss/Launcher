@@ -3,6 +3,16 @@
 {% block title %}Subir Nueva Versión del Launcher - Launcher Admin Panel{% endblock %}
 
 {% block content %}
+<style>
+    .file-upload-area.file-selected {
+        border-color: #198754;
+        background-color: #f8fff9;
+    }
+
+    .file-upload-area.file-selected h5 {
+        color: #198754 !important;
+    }
+</style>
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="bi bi-cloud-upload me-2"></i>Subir Nueva Versión del Launcher
@@ -28,13 +38,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-floating mb-3">
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="version" 
-                                       name="version" 
-                                       placeholder="1.0.0.0" 
-                                       pattern="^\d+\.\d+\.\d+\.\d+$"
-                                       required>
+                                <input type="text" class="form-control" id="version" name="version"
+                                    placeholder="1.0.0.0" pattern="^\d+\.\d+\.\d+\.\d+$" required>
                                 <label for="version">
                                     <i class="bi bi-tag me-2"></i>Número de Versión
                                 </label>
@@ -43,11 +48,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-check form-switch mt-4">
-                                <input class="form-check-input" 
-                                       type="checkbox" 
-                                       id="is_current" 
-                                       name="is_current"
-                                       checked>
+                                <input class="form-check-input" type="checkbox" id="is_current" name="is_current"
+                                    checked>
                                 <label class="form-check-label" for="is_current">
                                     <i class="bi bi-star me-2"></i>Establecer como versión actual
                                 </label>
@@ -57,11 +59,8 @@
                     </div>
 
                     <div class="form-floating mb-3">
-                        <textarea class="form-control" 
-                                  id="release_notes" 
-                                  name="release_notes" 
-                                  placeholder="Descripción de los cambios..."
-                                  style="height: 120px;"></textarea>
+                        <textarea class="form-control" id="release_notes" name="release_notes"
+                            placeholder="Descripción de los cambios..." style="height: 120px;"></textarea>
                         <label for="release_notes">
                             <i class="bi bi-journal-text me-2"></i>Notas de la Versión
                         </label>
@@ -80,24 +79,20 @@
                 <div class="card-body">
                     <div class="file-upload-area" id="uploadArea">
                         <div class="upload-content">
-                            <i class="bi bi-app" style="font-size: 3rem; color: #6c757d;"></i>
+                            <i class="bi bi-filetype-exe" style="font-size: 3rem; color: #6c757d;"></i>
                             <h5 class="mt-3 mb-2">Arrastra el ejecutable aquí o haz clic para seleccionar</h5>
                             <p class="text-muted mb-3">
                                 Solo archivos .exe son permitidos<br>
                                 El archivo será renombrado automáticamente si es necesario
                             </p>
-                            <button type="button" class="btn btn-primary" onclick="document.getElementById('launcherFile').click()">
+                            <button type="button" class="btn btn-primary">
                                 <i class="bi bi-folder2-open me-2"></i>Seleccionar Ejecutable
                             </button>
                         </div>
-                        <input type="file" 
-                               id="launcherFile" 
-                               name="launcher_file" 
-                               accept=".exe"
-                               style="display: none;"
-                               required>
+                        <input type="file" id="launcherFile" name="launcher_file" accept=".exe" style="display: none;"
+                            required>
                     </div>
-                    
+
                     <!-- File Info -->
                     <div id="fileInfo" class="mt-4" style="display: none;">
                         <div class="alert alert-info">
@@ -130,16 +125,19 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="replaceExisting" name="replace_existing" checked>
+                                <input class="form-check-input" type="checkbox" id="replaceExisting"
+                                    name="replace_existing" checked>
                                 <label class="form-check-label" for="replaceExisting">
                                     <strong>Reemplazar si existe</strong>
-                                    <div class="form-text">Sobrescribir si ya existe una versión con el mismo número</div>
+                                    <div class="form-text">Sobrescribir si ya existe una versión con el mismo número
+                                    </div>
                                 </label>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="createBackup" name="create_backup" checked>
+                                <input class="form-check-input" type="checkbox" id="createBackup" name="create_backup"
+                                    checked>
                                 <label class="form-check-label" for="createBackup">
                                     <strong>Crear backup de la versión actual</strong>
                                     <div class="form-text">Respaldar la versión actual antes de reemplazarla</div>
@@ -147,11 +145,12 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="updateJSON" name="update_json" checked>
+                                <input class="form-check-input" type="checkbox" id="updateJSON" name="update_json"
+                                    checked>
                                 <label class="form-check-label" for="updateJSON">
                                     <strong>Actualizar JSON automáticamente</strong>
                                     <div class="form-text">Regenerar launcher_update.json después de la subida</div>
@@ -160,7 +159,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="notifyClients" name="notify_clients">
+                                <input class="form-check-input" type="checkbox" id="notifyClients"
+                                    name="notify_clients">
                                 <label class="form-check-label" for="notifyClients">
                                     <strong>Notificar a clientes</strong>
                                     <div class="form-text">Enviar notificación de nueva versión disponible</div>
@@ -180,10 +180,8 @@
                 </div>
                 <div class="card-body">
                     <div class="progress mb-3">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" 
-                             id="uploadProgress" 
-                             style="width: 0%">0%</div>
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                            id="uploadProgress" style="width: 0%">0%</div>
                     </div>
                     <div id="uploadStatus" class="text-muted">
                         Preparando subida...
@@ -219,7 +217,7 @@
                 <div class="card-body">
                     <div class="launcher-preview">
                         <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-app text-primary me-2"></i>
+                            <i class="bi bi-filetype-exe text-primary me-2"></i>
                             <strong id="previewVersion">1.0.0.0</strong>
                             <span class="badge bg-success ms-2" id="previewBadge">Actual</span>
                         </div>
@@ -285,7 +283,7 @@
                     <div id="currentVersionInfo">
                         <!-- Current version info will be loaded here -->
                         <div class="text-muted text-center">
-                            <i class="bi bi-app" style="font-size: 2rem;"></i>
+                            <i class="bi bi-filetype-exe" style="font-size: 2rem;"></i>
                             <br>
                             <small>Cargando información...</small>
                         </div>
@@ -301,155 +299,379 @@
 {% block extra_js %}
 <script>
     let selectedFile = null;
-    
-    document.addEventListener('DOMContentLoaded', function() {
+
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('Inicializando upload launcher...');
+
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('launcherFile');
         const versionInput = document.getElementById('version');
         const notesInput = document.getElementById('release_notes');
         const isCurrentInput = document.getElementById('is_current');
         const form = document.getElementById('launcherForm');
-        
-        // Set current date
-        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-ES');
-        
+
+
+        // Verificar elementos críticos
+        console.log('Elementos encontrados:', {
+            uploadArea: !!uploadArea,
+            fileInput: !!fileInput,
+            versionInput: !!versionInput,
+            form: !!form
+        });
+
+        // Set current date SOLO si el elemento existe
+        const currentDateEl = document.getElementById('currentDate');
+        if (currentDateEl) {
+            currentDateEl.textContent = new Date().toLocaleDateString('es-ES');
+        } else {
+            console.warn('Elemento currentDate no encontrado');
+        }
+
         // Load current version info
         loadCurrentVersionInfo();
-        
-        // File upload area events
-        uploadArea.addEventListener('click', () => fileInput.click());
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            
-            const files = Array.from(e.dataTransfer.files);
-            const exeFile = files.find(file => file.name.toLowerCase().endsWith('.exe'));
-            
-            if (exeFile) {
-                handleFileSelection(exeFile);
-            } else {
-                alert('Por favor selecciona un archivo ejecutable (.exe)');
-            }
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFileSelection(e.target.files[0]);
-            }
-        });
-        
-        // Live preview updates
-        versionInput.addEventListener('input', function() {
-            const version = this.value || '1.0.0.0';
-            document.getElementById('previewVersion').textContent = version;
-        });
-        
-        notesInput.addEventListener('input', function() {
-            const notes = this.value.trim();
-            const previewNotes = document.getElementById('previewNotes');
-            
-            if (notes) {
-                previewNotes.innerHTML = notes.replace(/\n/g, '<br>');
-                previewNotes.className = 'bg-light p-2 rounded mt-1';
-            } else {
-                previewNotes.innerHTML = '<em class="text-muted">Sin notas...</em>';
-                previewNotes.className = 'bg-light p-2 rounded mt-1';
-            }
-        });
-        
-        isCurrentInput.addEventListener('change', function() {
-            const badge = document.getElementById('previewBadge');
-            if (this.checked) {
-                badge.textContent = 'Actual';
-                badge.className = 'badge bg-success ms-2';
-            } else {
-                badge.textContent = 'Archivada';
-                badge.className = 'badge bg-secondary ms-2';
-            }
-        });
-        
-        // Form submission
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitLauncher();
-        });
-        
-        // Version input validation
-        versionInput.addEventListener('blur', function() {
-            let version = this.value.trim();
-            if (version && !/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
-                const parts = version.split('.');
-                while (parts.length < 4) {
-                    parts.push('0');
+
+        // File upload area events - SOLO si existen los elementos
+        if (uploadArea && fileInput) {
+            uploadArea.addEventListener('click', (e) => {
+                // 🎯 PREVENIR doble disparo si se hace click en el botón
+                if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                    return; // No hacer nada si el click fue en el botón
                 }
-                this.value = parts.slice(0, 4).join('.');
-                this.dispatchEvent(new Event('input'));
+                fileInput.click();
+            });
+
+            // 🎯 CONFIGURAR el botón por separado
+            const selectButton = uploadArea.querySelector('.btn');
+            if (selectButton) {
+                selectButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Evitar que se propague al área
+                    fileInput.click();
+                });
+            }
+
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+
+                const files = Array.from(e.dataTransfer.files);
+                const exeFile = files.find(file => file.name.toLowerCase().endsWith('.exe'));
+
+                if (exeFile) {
+                    handleFileSelection(exeFile);
+                } else {
+                    alert('Por favor selecciona un archivo ejecutable (.exe)');
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                console.log('File input changed, files:', e.target.files.length);
+                if (e.target.files.length > 0) {
+                    handleFileSelection(e.target.files[0]);
+                }
+            });
+        } else {
+            console.error('Upload area o file input no encontrados');
+        }
+
+        // Live preview updates - SOLO si existen los elementos
+        if (versionInput) {
+            versionInput.addEventListener('input', function () {
+                const version = this.value || '1.0.0.0';
+                const previewVersionEl = document.getElementById('previewVersion');
+                if (previewVersionEl) {
+                    previewVersionEl.textContent = version;
+                }
+            });
+
+            // Version input validation
+            versionInput.addEventListener('blur', function () {
+                let version = this.value.trim();
+                if (version && !/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
+                    const parts = version.split('.');
+                    while (parts.length < 4) {
+                        parts.push('0');
+                    }
+                    this.value = parts.slice(0, 4).join('.');
+                    this.dispatchEvent(new Event('input'));
+                }
+            });
+
+            // Focus on version input
+            versionInput.focus();
+        }
+
+        if (notesInput) {
+            notesInput.addEventListener('input', function () {
+                const notes = this.value.trim();
+                const previewNotes = document.getElementById('previewNotes');
+
+                if (previewNotes) {
+                    if (notes) {
+                        previewNotes.innerHTML = notes.replace(/\n/g, '<br>');
+                        previewNotes.className = 'bg-light p-2 rounded mt-1';
+                    } else {
+                        previewNotes.innerHTML = '<em class="text-muted">Sin notas...</em>';
+                        previewNotes.className = 'bg-light p-2 rounded mt-1';
+                    }
+                }
+            });
+        }
+
+        if (isCurrentInput) {
+            isCurrentInput.addEventListener('change', function () {
+                const badge = document.getElementById('previewBadge');
+                if (badge) {
+                    if (this.checked) {
+                        badge.textContent = 'Actual';
+                        badge.className = 'badge bg-success ms-2';
+                    } else {
+                        badge.textContent = 'Archivada';
+                        badge.className = 'badge bg-secondary ms-2';
+                    }
+                }
+            });
+        }
+
+        // Form submission
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                submitLauncher();
+            });
+        }
+
+        // Update submit button on input changes
+        document.addEventListener('input', function (e) {
+            if (e.target.id === 'version') {
+                updateSubmitButton();
             }
         });
-        
-        // Focus on version input
-        versionInput.focus();
+
+        console.log('Inicialización completada');
     });
-    
+
+    // FUNCIÓN CORREGIDA - Esta es la que causaba el error
+    // REEMPLAZA LA FUNCIÓN handleFileSelection COMPLETA:
     function handleFileSelection(file) {
+        console.log('handleFileSelection llamada con archivo:', file.name);
+
         if (!file.name.toLowerCase().endsWith('.exe')) {
             alert('Solo se permiten archivos ejecutables (.exe)');
             return;
         }
-        
+
         selectedFile = file;
-        
-        // Generate final filename
-        const version = document.getElementById('version').value || 'latest';
-        const finalName = 'LC.exe'; // You could customize this based on settings
-        
-        // Show file info
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileSize').textContent = formatFileSize(file.size);
-        document.getElementById('finalFileName').textContent = finalName;
-        document.getElementById('fileInfo').style.display = 'block';
-        
+        const finalName = 'LC.exe';
+
+        // 🔍 DEBUG: Verificar que los elementos existen
+        const fileNameEl = document.getElementById('fileName');
+        const fileSizeEl = document.getElementById('fileSize');
+        const finalFileNameEl = document.getElementById('finalFileName');
+        const fileInfoEl = document.getElementById('fileInfo');
+        const previewFileNameEl = document.getElementById('previewFileName');
+
+        console.log('🔍 Elementos encontrados:', {
+            fileName: !!fileNameEl,
+            fileSize: !!fileSizeEl,
+            finalFileName: !!finalFileNameEl,
+            fileInfo: !!fileInfoEl,
+            previewFileName: !!previewFileNameEl
+        });
+
+        // Solo actualizar elementos que existen
+        if (fileNameEl) {
+            fileNameEl.textContent = file.name;
+            console.log('✅ fileName actualizado:', file.name);
+        } else {
+            console.error('❌ fileName element not found');
+        }
+
+        if (fileSizeEl) {
+            fileSizeEl.textContent = formatFileSize(file.size);
+            console.log('✅ fileSize actualizado:', formatFileSize(file.size));
+        } else {
+            console.error('❌ fileSize element not found');
+        }
+
+        if (finalFileNameEl) {
+            finalFileNameEl.textContent = finalName;
+            console.log('✅ finalFileName actualizado:', finalName);
+        } else {
+            console.error('❌ finalFileName element not found');
+        }
+
+        if (fileInfoEl) {
+            // 🎯 FORZAR la visualización
+            fileInfoEl.style.display = 'block';
+            fileInfoEl.style.visibility = 'visible';
+            //fileInfoEl.style.opacity = '1';
+
+            // 🎯 ASEGURAR que no hay CSS que lo oculte
+            fileInfoEl.classList.remove('d-none');
+            fileInfoEl.removeAttribute('hidden');
+
+            console.log('✅ fileInfo forzado a mostrarse');
+        } else {
+            console.error('❌ Element fileInfo not found in DOM');
+
+            // 🚨 CREAR el elemento si no existe (fallback)
+            const uploadCard = document.querySelector('.card-body');
+            if (uploadCard) {
+                const newFileInfo = document.createElement('div');
+                newFileInfo.id = 'fileInfo';
+                newFileInfo.className = 'mt-4';
+                newFileInfo.innerHTML = `
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle me-3"></i>
+                    <div class="flex-grow-1">
+                        <strong id="fileName">${file.name}</strong><br>
+                        <small id="fileSize">${formatFileSize(file.size)}</small>
+                        <div class="mt-2">
+                            <strong>Nombre final:</strong> <code id="finalFileName">${finalName}</code>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFile()">
+                        <i class="bi bi-x"></i> Cambiar
+                    </button>
+                </div>
+            </div>
+        `;
+                uploadCard.appendChild(newFileInfo);
+                console.log('📦 fileInfo creado dinámicamente');
+            }
+        }
+
         // Update preview
-        document.getElementById('previewFileName').textContent = finalName;
-        
+        if (previewFileNameEl) {
+            previewFileNameEl.textContent = finalName;
+            console.log('✅ previewFileName actualizado:', finalName);
+        } else {
+            console.error('❌ previewFileName element not found');
+        }
+
         updateSubmitButton();
+        console.log('handleFileSelection completado exitosamente');
     }
-    
+
     function clearFile() {
+        console.log('🗑️ clearFile llamada');
+
         selectedFile = null;
-        document.getElementById('launcherFile').value = '';
-        document.getElementById('fileInfo').style.display = 'none';
-        document.getElementById('previewFileName').textContent = 'Launcher.exe';
+
+        const fileInput = document.getElementById('launcherFile');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadArea = document.getElementById('uploadArea');
+
+        if (fileInput) {
+            fileInput.value = '';
+        }
+
+        if (fileInfo) {
+            fileInfo.style.display = 'none';
+        }
+
+        // 🎯 RESTAURAR EL ÁREA DE UPLOAD COMPLETAMENTE:
+        if (uploadArea) {
+            uploadArea.classList.remove('file-selected');
+            uploadArea.style.padding = '3rem 2rem'; // Restaurar padding original
+
+            const uploadContent = uploadArea.querySelector('.upload-content');
+            if (uploadContent) {
+                uploadContent.innerHTML = `
+                <i class="bi bi-app" style="font-size: 3rem; color: #6c757d;"></i>
+                <h5 class="mt-3 mb-2">Arrastra el ejecutable aquí o haz clic para seleccionar</h5>
+                <p class="text-muted mb-3">
+                    Solo archivos .exe son permitidos<br>
+                    El archivo será renombrado automáticamente si es necesario
+                </p>
+                <button type="button" class="btn btn-primary">
+                    <i class="bi bi-folder2-open me-2"></i>Seleccionar Ejecutable
+                </button>
+            `;
+            }
+
+            // Reconfigurar eventos después de restaurar
+            setupUploadAreaEvents();
+        }
+
+        updatePreviewFileName('Launcher.exe');
         updateSubmitButton();
     }
-    
+
+    function setupUploadAreaEvents() {
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('launcherFile');
+
+        if (uploadArea && fileInput) {
+            // Configurar click en área
+            uploadArea.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                    return;
+                }
+                e.preventDefault();
+                fileInput.click();
+            });
+
+            // Configurar botón específicamente
+            const selectButton = uploadArea.querySelector('.btn-primary');
+            if (selectButton) {
+                selectButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+            }
+        }
+    }
+
     function updateSubmitButton() {
         const submitBtn = document.getElementById('submitBtn');
         const versionInput = document.getElementById('version');
-        
+
+        if (!submitBtn) {
+            console.warn('Submit button no encontrado');
+            return;
+        }
+
         const hasFile = selectedFile !== null;
-        const hasVersion = versionInput.value.trim() !== '';
-        const validVersion = /^\d+\.\d+\.\d+\.\d+$/.test(versionInput.value.trim());
-        
-        submitBtn.disabled = !(hasFile && hasVersion && validVersion);
+        const hasVersion = versionInput ? versionInput.value.trim() !== '' : false;
+        const validVersion = versionInput ? /^\d+\.\d+\.\d+\.\d+$/.test(versionInput.value.trim()) : false;
+
+        const shouldEnable = hasFile && hasVersion && validVersion;
+        submitBtn.disabled = !shouldEnable;
+
+        console.log('Submit button actualizado:', {
+            hasFile,
+            hasVersion,
+            validVersion,
+            disabled: submitBtn.disabled
+        });
     }
-    
+
     async function loadCurrentVersionInfo() {
+        console.log('Cargando información de versión actual...');
+
+        const currentVersionInfo = document.getElementById('currentVersionInfo');
+        if (!currentVersionInfo) {
+            console.error('Elemento currentVersionInfo no encontrado');
+            return;
+        }
+
         try {
             const response = await fetch('/api/launcher_update.json');
             const data = await response.json();
-            
-            const currentVersionInfo = document.getElementById('currentVersionInfo');
+
             currentVersionInfo.innerHTML = `
                 <div class="text-center">
                     <h6 class="text-success mb-2">${data.version}</h6>
@@ -463,8 +685,9 @@
                     </a>
                 </div>
             `;
+            console.log('✅ Información de versión actual cargada');
         } catch (error) {
-            const currentVersionInfo = document.getElementById('currentVersionInfo');
+            console.warn('No se pudo cargar la versión actual:', error);
             currentVersionInfo.innerHTML = `
                 <div class="text-center text-muted">
                     <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
@@ -474,49 +697,61 @@
             `;
         }
     }
-    
+
     async function submitLauncher() {
+        console.log('submitLauncher llamada');
+
         if (!selectedFile) {
             alert('Selecciona un archivo ejecutable');
             return;
         }
-        
+
         const versionInput = document.getElementById('version');
-        const version = versionInput.value.trim();
-        
+        const version = versionInput ? versionInput.value.trim() : '';
+
         if (!version || !/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
             alert('Ingresa una versión válida (formato: 1.0.0.0)');
-            versionInput.focus();
+            if (versionInput) versionInput.focus();
             return;
         }
-        
+
         // Show progress
         const progressCard = document.getElementById('progressCard');
         const uploadProgress = document.getElementById('uploadProgress');
         const uploadStatus = document.getElementById('uploadStatus');
         const uploadSteps = document.getElementById('uploadSteps');
         const submitBtn = document.getElementById('submitBtn');
-        
-        progressCard.style.display = 'block';
-        submitBtn.disabled = true;
-        
+
+        if (progressCard) progressCard.style.display = 'block';
+        if (submitBtn) submitBtn.disabled = true;
+
         // Show loading on button
-        const btnText = submitBtn.querySelector('.btn-text');
-        const spinner = submitBtn.querySelector('.spinner-border');
-        btnText.innerHTML = '<i class="bi bi-hourglass"></i> Procesando...';
-        spinner.classList.remove('d-none');
-        
+        const btnText = submitBtn ? submitBtn.querySelector('.btn-text') : null;
+        const spinner = submitBtn ? submitBtn.querySelector('.spinner-border') : null;
+
+        if (btnText) btnText.innerHTML = '<i class="bi bi-hourglass"></i> Procesando...';
+        if (spinner) spinner.classList.remove('d-none');
+
         try {
             const formData = new FormData();
             formData.append('version', version);
             formData.append('launcher_file', selectedFile);
-            formData.append('release_notes', document.getElementById('release_notes').value);
-            formData.append('is_current', document.getElementById('is_current').checked);
-            formData.append('replace_existing', document.getElementById('replaceExisting').checked);
-            formData.append('create_backup', document.getElementById('createBackup').checked);
-            formData.append('update_json', document.getElementById('updateJSON').checked);
-            formData.append('notify_clients', document.getElementById('notifyClients').checked);
-            
+
+            // Agregar otros campos del formulario solo si existen
+            const releaseNotesEl = document.getElementById('release_notes');
+            const isCurrentEl = document.getElementById('is_current');
+            const replaceExistingEl = document.getElementById('replaceExisting');
+            const createBackupEl = document.getElementById('createBackup');
+            const updateJSONEl = document.getElementById('updateJSON');
+            const notifyClientsEl = document.getElementById('notifyClients');
+
+            if (releaseNotesEl) formData.append('release_notes', releaseNotesEl.value);
+            if (isCurrentEl) formData.append('is_current', isCurrentEl.checked);
+            if (replaceExistingEl) formData.append('replace_existing', replaceExistingEl.checked);
+            if (createBackupEl) formData.append('create_backup', createBackupEl.checked);
+            if (updateJSONEl) formData.append('update_json', updateJSONEl.checked);
+            if (notifyClientsEl) formData.append('notify_clients', notifyClientsEl.checked);
+
             // Simulate upload steps
             const steps = [
                 'Validando archivo...',
@@ -526,76 +761,85 @@
                 'Regenerando JSON de configuración...',
                 'Finalizando...'
             ];
-            
+
             let progress = 0;
             let stepIndex = 0;
-            
+
             const progressInterval = setInterval(() => {
-                if (stepIndex < steps.length) {
+                if (stepIndex < steps.length && uploadStatus && uploadSteps) {
                     uploadStatus.textContent = steps[stepIndex];
                     uploadSteps.innerHTML = steps.slice(0, stepIndex + 1)
                         .map((step, i) => `<div>${i === stepIndex ? '🔄' : '✅'} ${step}</div>`)
                         .join('');
                     stepIndex++;
                 }
-                
+
                 progress += Math.random() * 15;
                 if (progress > 90) progress = 90;
-                
-                uploadProgress.style.width = `${progress}%`;
-                uploadProgress.textContent = `${Math.round(progress)}%`;
+
+                if (uploadProgress) {
+                    uploadProgress.style.width = `${progress}%`;
+                    uploadProgress.textContent = `${Math.round(progress)}%`;
+                }
             }, 1000);
-            
+
             // Submit form
             const response = await fetch(window.location.href, {
                 method: 'POST',
                 body: formData
             });
-            
+
             clearInterval(progressInterval);
-            
+
             if (response.ok) {
                 // Complete progress
-                uploadProgress.style.width = '100%';
-                uploadProgress.textContent = '100%';
-                uploadStatus.innerHTML = '<i class="bi bi-check-circle text-success me-2"></i>¡Launcher subido exitosamente!';
-                uploadSteps.innerHTML = steps.map(step => `<div>✅ ${step}</div>`).join('');
-                
+                if (uploadProgress) {
+                    uploadProgress.style.width = '100%';
+                    uploadProgress.textContent = '100%';
+                }
+                if (uploadStatus) {
+                    uploadStatus.innerHTML = '<i class="bi bi-check-circle text-success me-2"></i>¡Launcher subido exitosamente!';
+                }
+                if (uploadSteps) {
+                    uploadSteps.innerHTML = steps.map(step => `<div>✅ ${step}</div>`).join('');
+                }
+
                 setTimeout(() => {
                     window.location.href = '{{ url_for("admin.launcher_versions") }}';
                 }, 2000);
             } else {
                 throw new Error(`Error del servidor: ${response.status}`);
             }
-            
+
         } catch (error) {
-            uploadProgress.classList.remove('progress-bar-animated');
-            uploadProgress.classList.add('bg-danger');
-            uploadStatus.innerHTML = `<i class="bi bi-exclamation-triangle text-danger me-2"></i>Error: ${error.message}`;
-            uploadSteps.innerHTML = '<div class="text-danger">❌ La subida ha fallado</div>';
-            
+            console.error('Error en submitLauncher:', error);
+
+            if (uploadProgress) {
+                uploadProgress.classList.remove('progress-bar-animated');
+                uploadProgress.classList.add('bg-danger');
+            }
+            if (uploadStatus) {
+                uploadStatus.innerHTML = `<i class="bi bi-exclamation-triangle text-danger me-2"></i>Error: ${error.message}`;
+            }
+            if (uploadSteps) {
+                uploadSteps.innerHTML = '<div class="text-danger">❌ La subida ha fallado</div>';
+            }
+
             // Restore button
-            btnText.innerHTML = '<i class="bi bi-cloud-upload"></i> Subir Launcher';
-            spinner.classList.add('d-none');
-            submitBtn.disabled = false;
+            if (btnText) btnText.innerHTML = '<i class="bi bi-cloud-upload"></i> Subir Launcher';
+            if (spinner) spinner.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
-    
+
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 B';
-        
+
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        
+
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
-    
-    // Update submit button on input changes
-    document.addEventListener('input', function(e) {
-        if (e.target.id === 'version') {
-            updateSubmitButton();
-        }
-    });
 </script>
 {% endblock %}
