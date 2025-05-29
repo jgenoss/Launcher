@@ -18,7 +18,7 @@
                 <i class="bi bi-gear"></i> Acciones
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/api/launcher_update.json" target="_blank">
+                <li><a class="dropdown-item" href="/api/launcher_update" target="_blank">
                     <i class="bi bi-code me-2"></i>Ver JSON del Launcher
                 </a></li>
                 <li><a class="dropdown-item" href="#" onclick="testLauncherUpdate()">
@@ -401,9 +401,9 @@
                     <label class="form-label small fw-bold">API JSON:</label>
                     <div class="input-group input-group-sm">
                         <input type="text" class="form-control font-monospace" 
-                               value="{{ request.url_root }}api/launcher_update.json" readonly>
+                               value="{{ request.url_root }}api/launcher_update" readonly>
                         <button class="btn btn-outline-secondary" type="button"
-                                onclick="copyToClipboard('{{ request.url_root }}api/launcher_update.json')">
+                                onclick="copyToClipboard('{{ request.url_root }}api/launcher_update')">
                             <i class="bi bi-clipboard"></i>
                         </button>
                     </div>
@@ -450,8 +450,8 @@
 
     // Test launcher update endpoint
     function testLauncherUpdate() {
-        fetch('/api/launcher_update.json')
-            .then(response => response.json())
+        fetch('/api/launcher_update')
+            .then(response => response())
             .then(data => {
                 showAlert('success', `✅ API funcionando correctamente. Versión actual: ${data.version}`);
             })

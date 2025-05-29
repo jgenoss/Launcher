@@ -153,7 +153,7 @@
                                     checked>
                                 <label class="form-check-label" for="updateJSON">
                                     <strong>Actualizar JSON automáticamente</strong>
-                                    <div class="form-text">Regenerar launcher_update.json después de la subida</div>
+                                    <div class="form-text">Regenerar launcher_update después de la subida</div>
                                 </label>
                             </div>
                         </div>
@@ -669,8 +669,8 @@
         }
 
         try {
-            const response = await fetch('/api/launcher_update.json');
-            const data = await response.json();
+            const response = await fetch('/api/launcher_update');
+            const data = await response();
 
             currentVersionInfo.innerHTML = `
                 <div class="text-center">

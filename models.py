@@ -6,6 +6,7 @@ import json
 db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
+    __tablename__ = 'launcher_user'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -27,14 +28,39 @@ class User(UserMixin, db.Model):
             'last_login': self.last_login.strftime('%Y-%m-%d %H:%M:%S') if self.last_login else None
         }
 
+class launcher_ban(db.Model):
+    __tablename__ = 'launcher_ban'
+    id = db.Column(db.Integer, primary_key=True)
+    hwid = db.Column(db.String(255), unique=True, nullable=False)
+    serial_number = db.Column(db.String(255), nullable=True)
+    reason = db.Column(db.String(255), nullable=True)
+    mac_address = db.Column(db.String(255), nullable=True)
+    is_banned = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Blacklist {self.hwid}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'hwid': self.hwid,
+            'serial_number': self.serial_number,
+            'reason': self.reason,
+            'mac_address': self.mac_address,
+            'is_banned': self.is_banned,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
 
 class GameVersion(db.Model):
+    __tablename__ = 'launcher_game_version'
     id = db.Column(db.Integer, primary_key=True)
     version = db.Column(db.String(20), unique=True, nullable=False)
     is_latest = db.Column(db.Boolean, default=False)
     release_notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('launcher_user.id'))
     
     # Relaciones
     update_packages = db.relationship('UpdatePackage', backref='version', lazy=True)
@@ -70,14 +96,15 @@ class GameVersion(db.Model):
         }
 
 class UpdatePackage(db.Model):
+    __tablename__ = 'launcher_update_package'
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
-    version_id = db.Column(db.Integer, db.ForeignKey('game_version.id'), nullable=False)
+    version_id = db.Column(db.Integer, db.ForeignKey('launcher_game_version.id'), nullable=False)
     file_path = db.Column(db.String(500), nullable=False)
     file_size = db.Column(db.Integer)
     md5_hash = db.Column(db.String(32))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('launcher_user.id'))
 
     def __repr__(self):
         return f'<UpdatePackage {self.filename}>'
@@ -96,12 +123,13 @@ class UpdatePackage(db.Model):
 
 
 class GameFile(db.Model):
+    __tablename__ = 'launcher_game_file'
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     relative_path = db.Column(db.String(500), nullable=False)
     md5_hash = db.Column(db.String(32), nullable=False)
     file_size = db.Column(db.Integer)
-    version_id = db.Column(db.Integer, db.ForeignKey('game_version.id'))
+    version_id = db.Column(db.Integer, db.ForeignKey('launcher_game_version.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -116,6 +144,7 @@ class GameFile(db.Model):
         }
 
 class LauncherVersion(db.Model):
+    __tablename__ = 'launcher_version'
     id = db.Column(db.Integer, primary_key=True)
     version = db.Column(db.String(20), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
@@ -123,7 +152,7 @@ class LauncherVersion(db.Model):
     is_current = db.Column(db.Boolean, default=False)
     release_notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('launcher_user.id'))
 
     def __repr__(self):
         return f'<LauncherVersion {self.version}>'
@@ -156,13 +185,14 @@ class LauncherVersion(db.Model):
 
 
 class NewsMessage(db.Model):
+    __tablename__ = 'launcher_news_message'
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(50), nullable=False)  # 'Actualización', 'Noticia', etc.
     message = db.Column(db.Text, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     priority = db.Column(db.Integer, default=0)  # Para ordenamiento
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_by = db.Column(db.Integer, db.ForeignKey('launcher_user.id'))
 
     def __repr__(self):
         return f'<NewsMessage {self.type}: {self.message[:50]}>'
@@ -174,12 +204,13 @@ class NewsMessage(db.Model):
         }
 
 class ServerSettings(db.Model):
+    __tablename__ = 'launcher_server_settings'
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(100), unique=True, nullable=False)
     value = db.Column(db.Text, nullable=False)
     description = db.Column(db.String(255))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    updated_by = db.Column(db.Integer, db.ForeignKey('launcher_user.id'))
 
     def __repr__(self):
         return f'<ServerSettings {self.key}: {self.value}>'
@@ -204,6 +235,7 @@ class ServerSettings(db.Model):
         return setting
 
 class DownloadLog(db.Model):
+    __tablename__ = 'launcher_download_log'
     id = db.Column(db.Integer, primary_key=True)
     ip_address = db.Column(db.String(45), nullable=False)
     user_agent = db.Column(db.String(500))

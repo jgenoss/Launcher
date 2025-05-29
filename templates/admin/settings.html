@@ -214,7 +214,7 @@
                         
                         <div class="mb-3">
                             <label for="allowedExtensions" class="form-label">Extensiones Permitidas</label>
-                            <textarea class="form-control" id="allowedExtensions" rows="3">.exe, .dll, .xml, .json, .txt, .zip, .png, .jpg, .gif</textarea>
+                            <textarea class="form-control" id="allowedExtensions" rows="3">.exe, .dll, .xml, , .txt, .zip, .png, .jpg, .gif</textarea>
                             <div class="form-text">Separadas por comas</div>
                         </div>
                         
@@ -554,7 +554,7 @@
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `launcher_settings_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `launcher_settings_${new Date().toISOString().split('T')[0]}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -566,7 +566,7 @@
     function importSettings() {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.json';
+        input.accept = '';
         
         input.onchange = function(e) {
             const file = e.target.files[0];

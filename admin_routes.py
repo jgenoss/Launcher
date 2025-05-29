@@ -36,7 +36,7 @@ def dashboard():
         # Versión actual
         latest_version = GameVersion.get_latest()
         current_launcher = LauncherVersion.get_current()
-        
+        print("Última versión:", latest_version)
         # Descargas recientes (últimas 24 horas)
         yesterday = datetime.utcnow() - timedelta(days=1)
         recent_downloads = DownloadLog.query.filter(DownloadLog.created_at >= yesterday).count()

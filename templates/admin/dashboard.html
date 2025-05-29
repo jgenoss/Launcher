@@ -225,7 +225,7 @@
 <script>
     // Downloads Chart
     const ctx = document.getElementById('downloadsChart').getContext('2d');
-    const downloadsData = {{ downloads_by_day | tojson  | safe }};
+    const downloadsData = JSON.parse('{{ downloads_by_day | tojson | safe }}');
     
     const chart = new Chart(ctx, {
         type: 'line',
@@ -276,7 +276,7 @@
     async function checkApiStatus() {
         try {
             const response = await fetch('/api/status');
-            const data = await response.json();
+            const data = await response();
             
             const statusBadge = document.getElementById('apiStatus');
             if (data.status === 'online') {
@@ -297,7 +297,7 @@
     async function loadRecentActivity() {
         try {
             const response = await fetch('/api/stats');
-            const data = await response.json();
+            const data = await response();
             
             // This would need to be implemented in the backend
             // For now, show a placeholder

@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, send_from_directory, current_app
-from models import GameVersion, GameFile, UpdatePackage, LauncherVersion, NewsMessage, DownloadLog, db
+from models import GameVersion, GameFile, UpdatePackage, LauncherVersion, NewsMessage, DownloadLog,launcher_ban, db
 import os
 import json
 from datetime import datetime
@@ -22,7 +22,82 @@ def log_download(file_requested, file_type, success=True):
     except Exception as e:
         print(f"Error logging download: {e}")
 
-@api_bp.route('/launcher_update.json')
+@api_bp.route('/check', methods=['POST'])
+def check_hwid():
+    """Endpoint para verificar HWID contra la lista negra y registrar nuevos dispositivos"""
+    response = request.get_json()
+    hwid = response.get('hwid')
+    serial = response.get('serial')
+    mac = response.get('mac')
+
+    # Validación de entrada
+    if not any([hwid, serial, mac]):
+        return jsonify({"error": "At least one identifier (HWID, serial or MAC) is required"}), 400
+
+    try:
+        # Buscar en la base de datos usando cualquier identificador disponible
+        query = db.session.query(launcher_ban)
+        
+        if hwid:
+            query = query.filter(launcher_ban.hwid == hwid)
+        if serial:
+            query = query.filter(launcher_ban.serial_number == serial)
+        if mac:
+            query = query.filter(launcher_ban.mac_address == mac)
+        
+        device = query.first()
+
+        current_app.logger.info(f"Checking device - HWID: {hwid}, Serial: {serial}, MAC: {mac}")
+
+        # Si el dispositivo no existe, registrarlo
+        if not device:
+            new_device = launcher_ban(
+                hwid=hwid,
+                serial_number=serial,
+                mac_address=mac,
+                is_banned=False,
+                created_at=datetime.utcnow(),
+                reason="Automatically registered"
+            )
+            
+            db.session.add(new_device)
+            db.session.commit()
+            current_app.logger.info(f"New device registered - HWID: {hwid}")
+            return jsonify({
+                "status": "ok",
+                "message": "Device registered successfully",
+                "is_banned": False,
+                "new_registration": True
+            }), 200
+
+        # Si el dispositivo existe, verificar si está baneado
+        if device.is_banned:
+            current_app.logger.warning(f"Banned device detected - ID: {device.id}")
+            return jsonify({
+                "status": "banned",
+                "is_banned": True,
+                "message": "This device is blacklisted",
+                "ban_reason": device.reason,
+                "banned_since": device.created_at.isoformat()
+            }), 200
+
+        # Dispositivo existe pero no está baneado
+        return jsonify({
+            "status": "ok",
+            "message": "Device is not blacklisted",
+            "is_banned": False,
+            "first_seen": device.created_at.isoformat()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in check_hwid: {str(e)}", exc_info=True)
+        return jsonify({
+            "error": "Internal server error",
+            "details": str(e)
+        }), 500
+
+@api_bp.route('/launcher_update')
 def launcher_update():
     """Endpoint para verificar actualizaciones del launcher"""
     try:
@@ -34,7 +109,7 @@ def launcher_update():
                 "file_name": "LC.exe"
             }), 404
         
-        log_download('launcher_update.json', 'launcher_check')
+        log_download('launcher_update', 'launcher_check')
         
         return jsonify({
             "version": current_launcher.version,
@@ -43,7 +118,7 @@ def launcher_update():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@api_bp.route('/update.json')
+@api_bp.route('/update')
 def update_info():
     """Endpoint principal para información de actualizaciones del juego"""
     try:
@@ -64,7 +139,7 @@ def update_info():
         files = GameFile.query.filter_by(version_id=latest_version.id).all()
         file_hashes = [file.to_dict() for file in files]
 
-        log_download('update.json', 'update_check')
+        log_download('update', 'update_check')
 
         response_data = {
             "latest_version": latest_version.version,
@@ -76,7 +151,7 @@ def update_info():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@api_bp.route('/message.json')
+@api_bp.route('/message')
 def messages():
     """Endpoint para mensajes y noticias"""
     try:
@@ -92,7 +167,7 @@ def messages():
                 'created_at': msg.created_at.isoformat() if msg.created_at else None
             })
         
-        log_download('message.json', 'messages')
+        log_download('message', 'messages')
         
         return jsonify(messages_data)
     except Exception as e:

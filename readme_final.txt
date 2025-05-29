@@ -262,7 +262,7 @@ server {
    - Ve a `Versiones del Launcher` → `Subir Nueva Versión`
    - Sube el archivo .exe del launcher
    - Configura como versión actual
-   - El sistema actualiza automáticamente `launcher_update.json`
+   - El sistema actualiza automáticamente `launcher_update`
 
 ### 3. Sistema de Mensajes
 
@@ -285,7 +285,7 @@ server {
 
 #### Información del Launcher
 ```http
-GET /api/launcher_update.json
+GET /api/launcher_update
 ```
 Respuesta:
 ```json
@@ -297,7 +297,7 @@ Respuesta:
 
 #### Información de Actualizaciones del Juego
 ```http
-GET /api/update.json
+GET /api/update
 ```
 Respuesta:
 ```json
@@ -321,7 +321,7 @@ Respuesta:
 
 #### Mensajes del Launcher
 ```http
-GET /api/message.json
+GET /api/message
 ```
 Respuesta:
 ```json
@@ -376,14 +376,14 @@ private string UrbBanner = "http://tu-dominio.com/Launcher/banner.html";
 
 El launcher C# debe consultar estos endpoints:
 
-1. **Actualización del Launcher**: `/api/launcher_update.json`
-2. **Actualizaciones del Juego**: `/api/update.json`
-3. **Mensajes**: `/api/message.json`
+1. **Actualización del Launcher**: `/api/launcher_update`
+2. **Actualizaciones del Juego**: `/api/update`
+3. **Mensajes**: `/api/message`
 4. **Banner**: `/Launcher/banner.html`
 
 ### Flujo de Actualización
 
-1. Launcher consulta `/api/update.json`
+1. Launcher consulta `/api/update`
 2. Compara versión local con `latest_version`
 3. Si hay actualización, descarga los ZIPs necesarios desde `/Launcher/updates/`
 4. Verifica integridad con MD5 de `file_hashes`

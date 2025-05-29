@@ -388,9 +388,9 @@ python app.py
 
 La aplicación expone varios endpoints para el launcher en C#:
 
-- `GET /Launcher/launcher_update.json` - Información de actualización del launcher
-- `GET /Launcher/update.json` - Información de actualizaciones del juego
-- `GET /Launcher/message.json` - Mensajes y noticias
+- `GET /Launcher/launcher_update` - Información de actualización del launcher
+- `GET /Launcher/update` - Información de actualizaciones del juego
+- `GET /Launcher/message` - Mensajes y noticias
 - `GET /Launcher/banner.html` - Banner HTML para el launcher
 - `GET /Launcher/files/<filename>` - Descarga de archivos individuales
 - `GET /Launcher/updates/<filename>` - Descarga de paquetes de actualización

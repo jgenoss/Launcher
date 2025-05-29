@@ -658,7 +658,7 @@
     // Real-time stats (mock data)
     function updateRealTimeStats() {
         fetch('{{ url_for("admin.logs_stats") }}')
-            .then(response => response.json())
+            .then(response => response())
             .then(data => {
                 // Actualizar estadísticas de la última hora
                 const downloadsEl = document.getElementById('downloadsLastHour');
@@ -689,7 +689,7 @@
         if (!ctx) return;
 
         fetch('{{ url_for("admin.logs_stats") }}')
-            .then(response => response.json())
+            .then(response => response())
             .then(data => {
                 if (!data.hourly_activity) return;
 
@@ -756,7 +756,7 @@
         updateRealTimeStats();
 
         // Actualizar estadísticas cada 30 segundos
-        setInterval(updateRealTimeStats, 1000);
+        setInterval(updateRealTimeStats, 5000);
 
         // Agregar event listeners para los filtros
         const filterElements = ['searchInput', 'typeFilter', 'statusFilter', 'timeFilter', 'ipFilter'];

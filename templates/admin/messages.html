@@ -18,7 +18,7 @@
                 <i class="bi bi-gear"></i> Acciones
             </button>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/api/message.json" target="_blank">
+                <li><a class="dropdown-item" href="/api/message" target="_blank">
                         <i class="bi bi-code me-2"></i>Ver JSON de Mensajes
                     </a></li>
                 <li><a class="dropdown-item" href="#" onclick="toggleAllMessages()">
@@ -615,7 +615,7 @@
     }
 
     function previewInLauncher() {
-        window.open('/api/message.json', '_blank');
+        window.open('/api/message', '_blank');
     }
 
     function exportMessages() {
