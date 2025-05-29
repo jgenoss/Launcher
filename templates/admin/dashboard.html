@@ -3,6 +3,7 @@
 {% block title %}Dashboard - Launcher Admin Panel{% endblock %}
 
 {% block content %}
+
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
@@ -19,18 +20,20 @@
             </button>
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="{{ url_for('admin.create_version') }}">
-                    <i class="bi bi-tag me-2"></i>Nueva Versión
-                </a></li>
+                        <i class="bi bi-tag me-2"></i>Nueva Versión
+                    </a></li>
                 <li><a class="dropdown-item" href="{{ url_for('admin.upload_files') }}">
-                    <i class="bi bi-upload me-2"></i>Subir Archivos
-                </a></li>
+                        <i class="bi bi-upload me-2"></i>Subir Archivos
+                    </a></li>
                 <li><a class="dropdown-item" href="{{ url_for('admin.create_update') }}">
-                    <i class="bi bi-download me-2"></i>Crear Actualización
-                </a></li>
-                <li><hr class="dropdown-divider"></li>
+                        <i class="bi bi-download me-2"></i>Crear Actualización
+                    </a></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
                 <li><a class="dropdown-item" href="{{ url_for('admin.create_message') }}">
-                    <i class="bi bi-chat-dots me-2"></i>Nuevo Mensaje
-                </a></li>
+                        <i class="bi bi-chat-dots me-2"></i>Nuevo Mensaje
+                    </a></li>
             </ul>
         </div>
     </div>
@@ -51,14 +54,14 @@
             </div>
             <div class="mt-2">
                 {% if latest_version %}
-                    <small class="text-white-50">Última: {{ latest_version.version }}</small>
+                <small class="text-white-50">Última: {{ latest_version.version }}</small>
                 {% else %}
-                    <small class="text-white-50">No hay versiones</small>
+                <small class="text-white-50">No hay versiones</small>
                 {% endif %}
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="stats-card success">
             <div class="d-flex align-items-center">
@@ -75,7 +78,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="stats-card warning">
             <div class="d-flex align-items-center">
@@ -92,7 +95,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="stats-card info">
             <div class="d-flex align-items-center">
@@ -121,11 +124,13 @@
                     <i class="bi bi-bar-chart me-2"></i>Descargas por Día (Últimos 7 días)
                 </h5>
                 <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                        data-bs-toggle="dropdown">
                         <i class="bi bi-three-dots"></i>
                     </button>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ url_for('admin.download_logs') }}">Ver todos los logs</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin.download_logs') }}">Ver todos los logs</a>
+                        </li>
                         <li><a class="dropdown-item" href="./api/stats" target="_blank">API de estadísticas</a></li>
                     </ul>
                 </div>
@@ -135,7 +140,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- System Status -->
     <div class="col-lg-4 mb-4">
         <div class="card h-100">
@@ -149,17 +154,17 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold">Versión del Juego:</span>
                         {% if latest_version %}
-                            <span class="badge bg-success">{{ latest_version.version }}</span>
+                        <span class="badge bg-success">{{ latest_version.version }}</span>
                         {% else %}
-                            <span class="badge bg-warning">No configurada</span>
+                        <span class="badge bg-warning">No configurada</span>
                         {% endif %}
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold">Launcher Actual:</span>
                         {% if current_launcher %}
-                            <span class="badge bg-primary">{{ current_launcher.version }}</span>
+                        <span class="badge bg-primary">{{ current_launcher.version }}</span>
                         {% else %}
-                            <span class="badge bg-warning">No configurado</span>
+                        <span class="badge bg-warning">No configurado</span>
                         {% endif %}
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -173,9 +178,9 @@
                         </span>
                     </div>
                 </div>
-                
+
                 <hr>
-                
+
                 <div class="mb-3">
                     <h6 class="fw-bold mb-2">Acciones Rápidas</h6>
                     <div class="d-grid gap-2">
@@ -224,20 +229,20 @@
 {% block extra_js %}
 <script>
 
-    
+
     // Downloads Chart
     const ctx = document.getElementById('downloadsChart').getContext('2d');
     const downloadsData = JSON.parse('{{ downloads_by_day | tojson | safe }}');
-    
+
     const chart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: downloadsData.map(d => {
                 const date = new Date(d.date);
-                return date.toLocaleDateString('es-ES', { 
-                    weekday: 'short', 
-                    month: 'short', 
-                    day: 'numeric' 
+                return date.toLocaleDateString('es-ES', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
                 });
             }),
             datasets: [{
@@ -273,13 +278,13 @@
             }
         }
     });
-    
+
     // Check API Status
     async function checkApiStatus() {
         try {
             const response = await fetch('/api/status');
             const data = await response();
-            
+
             const statusBadge = document.getElementById('apiStatus');
             if (data.status === 'online') {
                 statusBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i>Online';
@@ -294,13 +299,13 @@
             statusBadge.className = 'badge bg-danger';
         }
     }
-    
+
     // Load Recent Activity
     async function loadRecentActivity() {
         try {
             const response = await fetch('/api/stats');
             const data = await response();
-            
+
             // This would need to be implemented in the backend
             // For now, show a placeholder
             document.getElementById('recentActivity').innerHTML = `
@@ -308,12 +313,12 @@
                     <div class="col-md-6">
                         <h6 class="fw-bold mb-3">Descargas por Tipo</h6>
                         <div class="list-group list-group-flush">
-                            ${data.downloads_by_type ? data.downloads_by_type.map(item => 
-                                `<div class="list-group-item d-flex justify-content-between align-items-center">
+                            ${data.downloads_by_type ? data.downloads_by_type.map(item =>
+                `<div class="list-group-item d-flex justify-content-between align-items-center">
                                     <span class="text-capitalize">${item.type || 'Desconocido'}</span>
                                     <span class="badge bg-primary rounded-pill">${item.count}</span>
                                 </div>`
-                            ).join('') : '<div class="text-muted">No hay datos disponibles</div>'}
+            ).join('') : '<div class="text-muted">No hay datos disponibles</div>'}
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -326,16 +331,16 @@
                 </div>
             `;
         } catch (error) {
-            document.getElementById('recentActivity').innerHTML = 
+            document.getElementById('recentActivity').innerHTML =
                 '<div class="text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error cargando actividad reciente</div>';
         }
     }
-    
+
     // Refresh Stats
     function refreshStats() {
         checkApiStatus();
         loadRecentActivity();
-        
+
         // Show success message
         const alertDiv = document.createElement('div');
         alertDiv.className = 'alert alert-success alert-dismissible fade show';
@@ -344,18 +349,18 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
         document.querySelector('.content-area').insertBefore(alertDiv, document.querySelector('.content-area').firstChild);
-        
+
         setTimeout(() => {
             const alert = new bootstrap.Alert(alertDiv);
             alert.close();
         }, 3000);
     }
-    
+
     // Initialize
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         checkApiStatus();
         loadRecentActivity();
-        
+
         // Auto-refresh every 30 seconds
         setInterval(checkApiStatus, 30000);
     });

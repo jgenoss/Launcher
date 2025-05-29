@@ -1,15 +1,16 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, send_from_directory
-from models import db #from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_socketio import SocketIO, emit
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from models import db
 import os
 import json
 import hashlib
 from datetime import datetime
 import zipfile
 from utils import format_file_size
-from flask_socketio import SocketIO, emit  # Añade esta importación
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'
@@ -18,8 +19,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 
-socketio = SocketIO(app, cors_allowed_origins="*")
-
 # Crear directorios necesarios
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'updates'), exist_ok=True)
@@ -27,8 +26,8 @@ os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'files'), exist_ok=True)
 os.makedirs('static/downloads', exist_ok=True)
 
 #db = SQLAlchemy(app)
-db.init_app(app)
-socketio.init_app(app)
+
+#socketio.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -153,4 +152,4 @@ if __name__ == '__main__':
         #create_admin_user()
         port = 5000
         print(f"Iniciando servidor en puerto {port}")
-        socketio.run(app,debug=True, host='0.0.0.0', port=port)
+        app.run(app,debug=True, host='0.0.0.0', port=port)

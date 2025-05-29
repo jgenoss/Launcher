@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, send_file
 from flask_login import login_required, current_user
-from flask_socketio import emit
 from werkzeug.utils import secure_filename
 from models import (GameVersion, GameFile, UpdatePackage, LauncherVersion, NewsMessage, DownloadLog, ServerSettings, User, db)
 import os
@@ -9,11 +8,11 @@ import zipfile
 from datetime import datetime, timedelta
 import json
 
+from flask_socketio import SocketIO, emit
+
+socketio = SocketIO(cors_allowed_origins='*')  # Permitir CORS para SocketIO
 
 admin_bp = Blueprint('admin', __name__)
-
-def get_socketio():
-    return current_app.extensions.get('socketio')
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
@@ -28,6 +27,11 @@ def calculate_md5(file_path):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+@admin_bp.route('/test_socket')
+def test_socket():
+    socketio.emit('mensaje_admin', {'msg': '¡Hola desde el backend!'}, namespace='/admin')
+    return 'Mensaje enviado por socketio'
 
 @admin_bp.route('/')
 @login_required
@@ -68,19 +72,7 @@ def dashboard():
             })
         
         downloads_by_day.reverse()
-        
-        socketio = get_socketio()
-        socketio.emit('update_dashboard', {
-            'total_versions': total_versions,
-            'total_files': total_files,
-            'total_updates': total_updates,
-            'total_downloads': total_downloads,
-            'latest_version': latest_version.version if latest_version else None,
-            'current_launcher': current_launcher.version if current_launcher else None,
-            'recent_downloads': recent_downloads,
-            'active_messages': active_messages,
-            'downloads_by_day': downloads_by_day
-        }, namespace='/admin')
+    
         
         return render_template('admin/dashboard.html',
                              total_versions=total_versions,
