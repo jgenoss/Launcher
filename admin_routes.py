@@ -1,18 +1,25 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, send_file
 from flask_login import login_required, current_user
+from flask_socketio import emit
 from werkzeug.utils import secure_filename
-from models import (GameVersion, GameFile, UpdatePackage, LauncherVersion, 
-                   NewsMessage, DownloadLog, ServerSettings, User, db)
+from models import (GameVersion, GameFile, UpdatePackage, LauncherVersion, NewsMessage, DownloadLog, ServerSettings, User, db)
 import os
 import hashlib
 import zipfile
 from datetime import datetime, timedelta
 import json
 
+
 admin_bp = Blueprint('admin', __name__)
+
+def get_socketio():
+    return current_app.extensions.get('socketio')
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def handle_message(self, data):
+    print('received message: ' + str(data))
 
 def calculate_md5(file_path):
     """Calcular MD5 de un archivo"""
@@ -36,7 +43,6 @@ def dashboard():
         # Versión actual
         latest_version = GameVersion.get_latest()
         current_launcher = LauncherVersion.get_current()
-        print("Última versión:", latest_version)
         # Descargas recientes (últimas 24 horas)
         yesterday = datetime.utcnow() - timedelta(days=1)
         recent_downloads = DownloadLog.query.filter(DownloadLog.created_at >= yesterday).count()
@@ -62,6 +68,19 @@ def dashboard():
             })
         
         downloads_by_day.reverse()
+        
+        socketio = get_socketio()
+        socketio.emit('update_dashboard', {
+            'total_versions': total_versions,
+            'total_files': total_files,
+            'total_updates': total_updates,
+            'total_downloads': total_downloads,
+            'latest_version': latest_version.version if latest_version else None,
+            'current_launcher': current_launcher.version if current_launcher else None,
+            'recent_downloads': recent_downloads,
+            'active_messages': active_messages,
+            'downloads_by_day': downloads_by_day
+        }, namespace='/admin')
         
         return render_template('admin/dashboard.html',
                              total_versions=total_versions,

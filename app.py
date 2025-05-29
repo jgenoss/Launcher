@@ -9,6 +9,7 @@ import hashlib
 from datetime import datetime
 import zipfile
 from utils import format_file_size
+from flask_socketio import SocketIO, emit  # Añade esta importación
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this'
@@ -16,6 +17,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:1234@localhost:54
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
+
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Crear directorios necesarios
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -25,6 +28,7 @@ os.makedirs('static/downloads', exist_ok=True)
 
 #db = SQLAlchemy(app)
 db.init_app(app)
+socketio.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -147,21 +151,6 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         #create_admin_user()
-    
-    # Buscar puerto disponible si 5000 está ocupado
-    import socket
-    port = 5000
-    while True:
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.bind(('0.0.0.0', port))
-            sock.close()
-            break
-        except OSError:
-            port += 1
-            if port > 5010:
-                port = 5000
-                break
-    
-    print(f"Iniciando servidor en puerto {port}")
-    app.run(debug=True, host='0.0.0.0', port=port)
+        port = 5000
+        print(f"Iniciando servidor en puerto {port}")
+        socketio.run(app,debug=True, host='0.0.0.0', port=port)

@@ -223,6 +223,8 @@
 
 {% block extra_js %}
 <script>
+
+    
     // Downloads Chart
     const ctx = document.getElementById('downloadsChart').getContext('2d');
     const downloadsData = JSON.parse('{{ downloads_by_day | tojson | safe }}');
