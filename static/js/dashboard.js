@@ -1,6 +1,6 @@
 /**
  * dashboard.js - Lógica Vue.js para el Dashboard
- * Separado completamente del template Jinja2
+ * Ahora carga todos los datos vía API.
  */
 
 // Esperar a que el DOM esté completamente cargado
@@ -22,29 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     console.log('✅ Elemento #app encontrado');
     
-    // Verificar que los datos del servidor estén disponibles
-    if (typeof window.DASHBOARD_DATA === 'undefined') {
-        console.error('❌ DASHBOARD_DATA no está disponible');
-        window.DASHBOARD_DATA = {
-            stats: {
-                totalVersions: 0,
-                totalFiles: 0,
-                totalUpdates: 0,
-                totalDownloads: 0,
-                recentDownloads: 0,
-                activeMessages: 0,
-                latestVersion: ''
-            },
-            systemStatus: {
-                gameVersion: '',
-                launcherVersion: ''
-            },
-            chartData: []
-        };
-    } else {
-        console.log('✅ DASHBOARD_DATA disponible:', window.DASHBOARD_DATA);
-    }
-    
     // Verificar que los mixins estén disponibles
     if (typeof NotificationMixin === 'undefined') {
         console.error('❌ NotificationMixin no está disponible');
@@ -65,19 +42,19 @@ document.addEventListener('DOMContentLoaded', function() {
         mixins: [NotificationMixin, HttpMixin, UtilsMixin, SocketMixin],
         data() {
             return {
-                // Estados reactivos inicializados con datos del servidor
+                // Estados reactivos inicializados con valores por defecto
                 stats: {
-                    totalVersions: window.DASHBOARD_DATA.stats.totalVersions || 0,
-                    totalFiles: window.DASHBOARD_DATA.stats.totalFiles || 0,
-                    totalUpdates: window.DASHBOARD_DATA.stats.totalUpdates || 0,
-                    totalDownloads: window.DASHBOARD_DATA.stats.totalDownloads || 0,
-                    recentDownloads: window.DASHBOARD_DATA.stats.recentDownloads || 0,
-                    activeMessages: window.DASHBOARD_DATA.stats.activeMessages || 0,
-                    latestVersion: window.DASHBOARD_DATA.stats.latestVersion || ''
+                    totalVersions: 0,
+                    totalFiles: 0,
+                    totalUpdates: 0,
+                    totalDownloads: 0,
+                    recentDownloads: 0,
+                    activeMessages: 0,
+                    latestVersion: ''
                 },
                 systemStatus: {
-                    gameVersion: window.DASHBOARD_DATA.systemStatus.gameVersion || '',
-                    launcherVersion: window.DASHBOARD_DATA.systemStatus.launcherVersion || ''
+                    gameVersion: '',
+                    launcherVersion: ''
                 },
                 apiStatus: {
                     online: true
@@ -87,42 +64,44 @@ document.addEventListener('DOMContentLoaded', function() {
                     error: false
                 },
                 loadingActivity: false,
-                loading: false,
+                loading: false, // Controla el overlay de carga global
                 loadingMessage: 'Cargando...',
                 chart: null,
                 autoRefreshInterval: null,
-                isSocketConnected: false,
-                socket: null,
-                // Datos del gráfico desde el servidor
-                chartData: window.DASHBOARD_DATA.chartData || []
+                isSocketConnected: false, // Gestionado por SocketMixin
+                socket: null, // Gestionado por SocketMixin
+                chartData: [] // Los datos del gráfico se cargarán vía API
             };
         },
 
     
         mounted() {
             console.log('Vue mounted - Dashboard inicializado');
-            console.log('Stats iniciales:', this.stats);
-            console.log('System status inicial:', this.systemStatus);
             
             // Inicializar SocketIO
             this.initSocket();
             
-            // Esperar un poco para que el DOM esté completamente renderizado
-            this.$nextTick(() => {
-                this.initializeChart();
-                this.checkApiStatus();
-                this.loadRecentActivity();
-            });
+            // Cargar todos los datos del dashboard después de que Vue esté montado
+            this.loadDashboardData();
             
-            // Auto-refresh cada 30 segundos
+            // Cargar actividad reciente y estado de API periódicamente
             this.autoRefreshInterval = setInterval(() => {
-                this.checkApiStatus();
-            }, 30000);
+                this.checkApiStatus(); // Puede ser cada 30 segundos
+                this.loadRecentActivity(); // Y esto también puede ser menos frecuente o activado por socket
+            }, 30000); // Ejemplo: Refrescar cada 30 segundos
+
+            // Refrescar el gráfico de descargas cada 5 minutos
+            this.chartRefreshInterval = setInterval(() => {
+                this.refreshChartData();
+            }, 300000); // 5 minutos
         },
 
     beforeDestroy() {
         if (this.autoRefreshInterval) {
             clearInterval(this.autoRefreshInterval);
+        }
+        if (this.chartRefreshInterval) { // Limpiar el nuevo intervalo
+            clearInterval(this.chartRefreshInterval);
         }
         if (this.chart) {
             this.chart.destroy();
@@ -130,6 +109,41 @@ document.addEventListener('DOMContentLoaded', function() {
     },
 
     methods: {
+        /**
+         * Cargar todos los datos del dashboard desde la API
+         */
+        async loadDashboardData() {
+            this.setLoading(true, 'Cargando datos del dashboard...');
+            try {
+                const data = await this.apiGet('/admin/api/dashboard_data');
+                
+                // Actualizar todas las propiedades de datos
+                this.stats.totalVersions = data.stats.totalVersions;
+                this.stats.totalFiles = data.stats.totalFiles;
+                this.stats.totalUpdates = data.stats.totalUpdates;
+                this.stats.totalDownloads = data.stats.totalDownloads;
+                this.stats.recentDownloads = data.stats.recentDownloads;
+                this.stats.activeMessages = data.stats.activeMessages;
+                this.stats.latestVersion = data.stats.latestVersion;
+
+                this.systemStatus.gameVersion = data.systemStatus.gameVersion;
+                this.systemStatus.launcherVersion = data.systemStatus.launcherVersion;
+                
+                this.chartData = data.chartData; // Asignar datos del gráfico
+                this.initializeChart(); // Inicializar el gráfico con los datos cargados
+
+                await this.loadRecentActivity(); // Cargar actividad reciente por separado
+                await this.checkApiStatus(); // Verificar estado de la API
+
+                console.log('✅ Datos del dashboard cargados:', this.stats, this.systemStatus);
+            } catch (error) {
+                this.showError('Error', 'No se pudieron cargar los datos del dashboard');
+                console.error('Error loading dashboard data:', error);
+            } finally {
+                this.setLoading(false);
+            }
+        },
+
         /**
          * Inicializar gráfico de descargas con Chart.js
          */
@@ -140,12 +154,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // Destruir instancia anterior si existe
+            if (this.chart) {
+                this.chart.destroy();
+            }
+
             const chartData = this.chartData;
             console.log('Inicializando gráfico con datos:', chartData);
 
             // Verificar que tengamos datos para el gráfico
             if (!chartData || chartData.length === 0) {
-                console.warn('No hay datos para el gráfico');
+                console.warn('No hay datos para el gráfico. Mostrando gráfico vacío.');
+                // Puedes optar por mostrar un mensaje en el canvas o dejarlo vacío
+                this.chart = new Chart(ctx, { /* ... config básica para canvas vacío ... */ });
                 return;
             }
 
@@ -181,7 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                stepSize: 1
+                                stepSize: 1 // Asegura pasos enteros si solo hay descargas unitarias
                             }
                         }
                     },
@@ -200,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
          */
         async checkApiStatus() {
             try {
-                const data = await this.apiGet('/api/status');
+                const data = await this.apiGet('/api/status'); // Esta API ya existe y es de solo datos
                 this.apiStatus.online = data.status === 'online';
                 
                 // Actualizar estadísticas del sistema si están disponibles
@@ -226,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.recentActivity.error = false;
             
             try {
-                const data = await this.apiGet('/api/stats');
+                const data = await this.apiGet('/api/stats'); // Esta API ya existe y es de solo datos
                 
                 // Procesar datos de descargas por tipo
                 this.recentActivity.downloadsByType = [];
@@ -252,35 +273,10 @@ document.addEventListener('DOMContentLoaded', function() {
          * Refrescar todas las estadísticas manualmente
          */
         async refreshStats() {
-            this.setLoading(true, 'Actualizando estadísticas...');
-            
-            try {
-                // Cargar estadísticas del servidor
-                const statsData = await this.apiGet('/api/stats');
-                
-                // Actualizar estadísticas locales
-                if (statsData) {
-                    this.stats = {
-                        ...this.stats,
-                        totalDownloads: statsData.total_downloads || this.stats.totalDownloads,
-                        activeMessages: statsData.active_messages || this.stats.activeMessages
-                    };
-                }
-                
-                // Verificar API y cargar actividad
-                await Promise.all([
-                    this.checkApiStatus(),
-                    this.loadRecentActivity()
-                ]);
-                
-                this.showSuccess('Actualizado', 'Estadísticas actualizadas correctamente');
-                console.log('Estadísticas refrescadas manualmente');
-            } catch (error) {
-                this.showError('Error', 'No se pudieron actualizar las estadísticas');
-                console.error('Error refreshing stats:', error);
-            } finally {
-                this.setLoading(false);
-            }
+            // Un solo punto de entrada para recargar todo
+            await this.loadDashboardData();
+            this.showSuccess('Actualizado', 'Estadísticas actualizadas correctamente');
+            console.log('Estadísticas refrescadas manualmente');
         },
 
         /**
@@ -311,6 +307,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.systemStatus.gameVersion = data.latest_version;
             }
             
+            // Aquí, en lugar de llamar a refreshChartData, si el socket enviara los datos del gráfico
+            // también se actualizaría directamente, pero por ahora se mantiene la llamada API periódica.
+            
             // Mostrar notificación de actualización en tiempo real
             this.showInfo('Actualización automática', 'Estadísticas actualizadas en tiempo real');
         },
@@ -323,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Llamar al método padre para manejo general
             SocketMixin.methods.handleSocketNotification.call(this, data);
             
-            // Manejar notificaciones específicas del dashboard
+            // Manejar notificaciones específicas del dashboard para actualizar contadores
             if (data.data && data.data.action) {
                 switch (data.data.action) {
                     case 'version_created':
@@ -332,6 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             this.systemStatus.gameVersion = data.data.version;
                             this.stats.latestVersion = data.data.version;
                         }
+                        // Forzar una actualización del gráfico si se crea una versión (puede afectar descargas)
+                        this.refreshChartData(); 
                         break;
                         
                     case 'files_uploaded':
@@ -384,9 +385,11 @@ document.addEventListener('DOMContentLoaded', function() {
          */
         async refreshChartData() {
             try {
-                const response = await this.apiGet('/admin/dashboard-chart-data');
-                if (response && response.downloads_by_day) {
-                    this.chartData = response.downloads_by_day;
+                // Se podría crear una API específica para solo datos del gráfico si los datos son pesados.
+                // Por ahora, se reutiliza get_dashboard_data.
+                const response = await this.apiGet('/admin/api/dashboard_data');
+                if (response && response.chartData) {
+                    this.chartData = response.chartData;
                     this.updateChart(this.chartData);
                 }
             } catch (error) {

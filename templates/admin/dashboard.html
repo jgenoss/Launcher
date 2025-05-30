@@ -38,7 +38,6 @@
     </div>
 </div>
 
-<!-- Statistics Cards -->
 <div class="row mb-4">
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="stats-card">
@@ -112,9 +111,7 @@
     </div>
 </div>
 
-<!-- Main Content Row -->
 <div class="row">
-    <!-- Downloads Chart -->
     <div class="col-lg-8 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -139,7 +136,6 @@
         </div>
     </div>
 
-    <!-- System Status -->
     <div class="col-lg-4 mb-4">
         <div class="card h-100">
             <div class="card-header">
@@ -195,7 +191,6 @@
     </div>
 </div>
 
-<!-- Recent Activity -->
 <div class="row">
     <div class="col-12">
         <div class="card">
@@ -244,38 +239,9 @@
     </div>
 </div>
 
-<!-- Script de datos del servidor para Vue.js -->
-<script>
-    // Datos del servidor para Vue.js - DEBE ejecutarse ANTES que dashboard.js
-    window.DASHBOARD_DATA = {
-        stats: {
-            totalVersions: {{ total_versions|default(0) }},
-            totalFiles: {{ total_files|default(0) }},
-            totalUpdates: {{ total_updates|default(0) }},
-            totalDownloads: {{ total_downloads|default(0) }},
-            recentDownloads: {{ recent_downloads|default(0) }},
-            activeMessages: {{ active_messages|default(0) }},
-            latestVersion: '{{ latest_version.version if latest_version else "" }}'
-        },
-        systemStatus: {
-            gameVersion: '{{ latest_version.version if latest_version else "" }}',
-            launcherVersion: '{{ current_launcher.version if current_launcher else "" }}'
-        },
-        chartData: {{ downloads_by_day | tojson | safe if downloads_by_day else '[]' }}
-    };
-    
-    // Verificar que los datos estén disponibles
-    console.log('DASHBOARD_DATA disponible antes de Vue:', window.DASHBOARD_DATA);
-    
-    // Debug: mostrar valores específicos
-    console.log('Total versions:', {{ total_versions|default(0) }});
-    console.log('Total files:', {{ total_files|default(0) }});
-    console.log('Latest version:', '{{ latest_version.version if latest_version else "NONE" }}');
-</script>
 {% endblock %}
 
 {% block vue_script %}
-<!-- Deshabilitar la instancia Vue por defecto de base.html -->
 <script>
     // Prevenir que base.html cree una instancia Vue que pueda interferir
     window.DISABLE_DEFAULT_VUE = true;

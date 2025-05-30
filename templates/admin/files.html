@@ -34,7 +34,6 @@
     </div>
 </div>
 
-<!-- File Statistics -->
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card text-center">
@@ -73,7 +72,6 @@
     </div>
 </div>
 
-<!-- Search and Filter Bar -->
 <div class="card mb-4">
     <div class="card-body">
         <div class="row align-items-center">
@@ -111,7 +109,6 @@
     </div>
 </div>
 
-<!-- Files Table -->
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0">
@@ -139,8 +136,7 @@
     </div>
 
     <div class="card-body p-0">
-        <div v-if="filteredFiles.length > 0">
-            <div class="table-responsive">
+        <div v-if="files.length > 0"> <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
@@ -191,8 +187,8 @@
                                 <span v-else class="text-muted">Sin versión</span>
                             </td>
                             <td>
-                                <span v-if="file.file_size" class="badge bg-light text-dark">
-                                    [[ formatFileSize(file.file_size) ]]
+                                <span v-if="file.file_size_formatted" class="badge bg-light text-dark">
+                                    [[ file.file_size_formatted ]]
                                 </span>
                                 <span v-else class="text-muted">-</span>
                             </td>
@@ -240,7 +236,6 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
             <div v-if="totalPages > 1" class="card-footer">
                 <nav aria-label="File pagination">
                     <ul class="pagination justify-content-center mb-0">
@@ -279,7 +274,6 @@
             </div>
         </div>
 
-        <!-- Empty State -->
         <div v-else class="text-center py-5">
             <div class="mb-3">
                 <i class="bi bi-file-earmark" style="font-size: 4rem; color: #dee2e6;"></i>
@@ -296,7 +290,6 @@
     </div>
 </div>
 
-<!-- File Detail Modal -->
 <div class="modal fade" id="fileDetailModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -326,8 +319,8 @@
 
                     <dt class="col-sm-4">Tamaño:</dt>
                     <dd class="col-sm-8">
-                        <span v-if="selectedFile.file_size">
-                            [[ formatFileSize(selectedFile.file_size) ]]
+                        <span v-if="selectedFile.file_size_formatted">
+                            [[ selectedFile.file_size_formatted ]]
                             <small class="text-muted">([[ selectedFile.file_size.toLocaleString() ]] bytes)</small>
                         </span>
                         <span v-else class="text-muted">No calculado</span>
@@ -370,28 +363,6 @@
     </div>
 </div>
 
-<!-- Script de datos del servidor para Vue.js -->
-<!-- Script de datos del servidor para Vue.js -->
-<script>
-    window.FILES_DATA = {
-        files: {{ files_data | tojson | safe }},
-        versions: {{ versions_data | tojson | safe }},
-        currentVersionId: {{ current_version_id if current_version_id else 'null' }},
-        pagination: {
-            page: {{ files.page }},
-            pages: {{ files.pages }},
-            perPage: {{ files.per_page }},
-            total: {{ files.total }},
-            hasNext: {{ files.has_next | tojson }},
-            hasPrev: {{ files.has_prev | tojson }}
-        },
-        urls: {
-            deleteFile: '{{ url_for("admin.delete_file", file_id=0) }}',
-            deleteSelected: '{{ url_for("admin.delete_selected_files") }}',
-            downloadBase: '{{ url_for("static", filename="downloads/") }}'
-        }
-    };
-</script>
 {% endblock %}
 
 {% block vue_script %}

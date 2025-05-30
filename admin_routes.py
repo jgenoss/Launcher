@@ -18,6 +18,7 @@ from socketio_utils import (
     test_socketio_connection,
     broadcast_stats_update
 )
+from utils import format_file_size
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -66,58 +67,69 @@ def calculate_md5(file_path):
 @admin_bp.route('/')
 @login_required
 def dashboard():
-    """Dashboard principal"""
+    """Dashboard principal - Solo renderiza la estructura HTML."""
     try:
-        # Estadísticas generales
+        # Aquí ya no se cargan todos los datos. Vue.js los pedirá vía API.
+        # Se pueden pasar variables mínimas si la plantilla lo necesita para lógica de "if"
+        # pero para el dashboard, la estructura es bastante estática.
+        return render_template('admin/dashboard.html') # Vue.js pedirá los datos después
+    except Exception as e:
+        flash(f'Error loading dashboard: {str(e)}', 'error')
+        return render_template('admin/dashboard.html')
+
+# --- NUEVA RUTA API para los datos del Dashboard ---
+@admin_bp.route('/api/dashboard_data', methods=['GET'])
+@login_required
+def get_dashboard_data():
+    """API para obtener todos los datos del dashboard."""
+    try:
         total_versions = GameVersion.query.count()
         total_files = GameFile.query.count()
         total_updates = UpdatePackage.query.count()
         total_downloads = DownloadLog.query.count()
-        
-        # Versión actual
+
         latest_version = GameVersion.get_latest()
         current_launcher = LauncherVersion.get_current()
-        # Descargas recientes (últimas 24 horas)
+
         yesterday = datetime.utcnow() - timedelta(days=1)
         recent_downloads = DownloadLog.query.filter(DownloadLog.created_at >= yesterday).count()
-        
-        # Mensajes activos
+
         active_messages = NewsMessage.query.filter_by(is_active=True).count()
-        
-        # Gráfico de descargas por día (últimos 7 días)
+
         downloads_by_day = []
         for i in range(7):
             day = datetime.utcnow() - timedelta(days=i)
             day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
             day_end = day_start + timedelta(days=1)
-            
             count = DownloadLog.query.filter(
                 DownloadLog.created_at >= day_start,
                 DownloadLog.created_at < day_end
             ).count()
-            
             downloads_by_day.append({
                 'date': day_start.strftime('%Y-%m-%d'),
                 'count': count
             })
-        
         downloads_by_day.reverse()
-    
-        
-        return render_template('admin/dashboard.html',
-                             total_versions=total_versions,
-                             total_files=total_files,
-                             total_updates=total_updates,
-                             total_downloads=total_downloads,
-                             latest_version=latest_version,
-                             current_launcher=current_launcher,
-                             recent_downloads=recent_downloads,
-                             active_messages=active_messages,
-                             downloads_by_day=downloads_by_day)
-    except Exception as e:
-        flash(f'Error loading dashboard: {str(e)}', 'error')
-        return render_template('admin/dashboard.html')
 
+        return jsonify({
+            'stats': {
+                'totalVersions': total_versions,
+                'totalFiles': total_files,
+                'totalUpdates': total_updates,
+                'totalDownloads': total_downloads,
+                'recentDownloads': recent_downloads,
+                'activeMessages': active_messages,
+                'latestVersion': latest_version.version if latest_version else ''
+            },
+            'systemStatus': {
+                'gameVersion': latest_version.version if latest_version else '',
+                'launcherVersion': current_launcher.version if current_launcher else ''
+            },
+            'chartData': downloads_by_day
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error fetching dashboard data: {e}")
+        return jsonify({'error': 'Error al cargar datos del dashboard', 'details': str(e)}), 500
 # ==================== RUTAS ADMINISTRATIVAS ====================
 @admin_bp.route('/versions')
 @login_required
@@ -180,64 +192,91 @@ def set_latest_version(version_id):
 
 
 # ==================== RUTAS PARA GESTIONAR ARCHIVOS DEL JUEGO ====================
+# ==================== RUTAS PARA GESTIONAR ARCHIVOS DEL JUEGO ====================
 @admin_bp.route('/files')
 @login_required
 def files():
-    """Gestión de archivos del juego"""
-    page = request.args.get('page', 1, type=int)
-    version_id = request.args.get('version_id', None, type=int)
-    
-    query = GameFile.query
-    if version_id:
-        query = query.filter_by(version_id=version_id)
-    
-    files = query.order_by(GameFile.created_at.desc()).paginate(
-        page=page, per_page=50, error_out=False
-    )
-    
-    versions = GameVersion.query.order_by(GameVersion.version.desc()).all()
-    
-    # 🔧 CONVERTIR A DICCIONARIOS PARA JSON
-    files_data = []
-    for file in files.items:
-        file_dict = {
-            'id': file.id,
-            'filename': file.filename,
-            'relative_path': file.relative_path,
-            'md5_hash': file.md5_hash,
-            'file_size': file.file_size,
-            'version_id': file.version_id,
-            'created_at': file.created_at.isoformat() if file.created_at else None,
-            'updated_at': file.updated_at.isoformat() if file.updated_at else None,
-            'version': None
-        }
-        
-        # Agregar información de la versión si existe
-        if file.version:
-            file_dict['version'] = {
-                'id': file.version.id,
-                'version': file.version.version,
-                'is_latest': file.version.is_latest
+    """Gestión de archivos del juego - Solo renderiza la estructura HTML."""
+    try:
+        # La lógica de filtrado inicial por version_id puede permanecer si quieres
+        # que el frontend haga una llamada API ya filtrada al inicio.
+        # O se puede eliminar y que el frontend pida todas las versiones y luego filtre.
+        # Por ahora, la mantendremos para la llamada API inicial.
+        version_id = request.args.get('version_id', None, type=int)
+        versions = GameVersion.query.order_by(GameVersion.version.desc()).all()
+        versions_data = [v.to_dict() for v in versions]
+
+        # La plantilla necesita `versions_data` y `current_version_id` para los filtros iniciales.
+        # El resto de los datos de `files` se cargarán por API.
+        return render_template('admin/files.html',
+                               versions_data=versions_data,
+                               current_version_id=version_id)
+    except Exception as e:
+        flash(f'Error al cargar la página de archivos: {str(e)}', 'error')
+        return render_template('admin/files.html', versions_data=[], current_version_id=None)
+
+# --- NUEVA RUTA API para los datos de la tabla de archivos ---
+@admin_bp.route('/api/files_data', methods=['GET'])
+@login_required
+def get_files_data():
+    """API para obtener los datos de los archivos, con paginación y filtro."""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        version_id = request.args.get('version_id', None, type=int)
+
+        query = GameFile.query
+        if version_id:
+            query = query.filter_by(version_id=version_id)
+
+        files_paginated = query.order_by(GameFile.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+
+        files_data = []
+        for file in files_paginated.items:
+            file_dict = {
+                'id': file.id,
+                'filename': file.filename,
+                'relative_path': file.relative_path,
+                'md5_hash': file.md5_hash,
+                'file_size': file.file_size, # En bytes
+                'file_size_formatted': format_file_size(file.file_size) if file.file_size else '0 B',
+                'version_id': file.version_id,
+                'created_at': file.created_at.isoformat() if file.created_at else None,
+                'updated_at': file.updated_at.isoformat() if file.updated_at else None,
+                'version': None
             }
-        
-        files_data.append(file_dict)
-    
-    # Convertir versiones a diccionarios
-    versions_data = []
-    for version in versions:
-        versions_data.append({
-            'id': version.id,
-            'version': version.version,
-            'is_latest': version.is_latest,
-            'created_at': version.created_at.isoformat() if version.created_at else None
+            if file.version:
+                file_dict['version'] = {
+                    'id': file.version.id,
+                    'version': file.version.version,
+                    'is_latest': file.version.is_latest
+                }
+            files_data.append(file_dict)
+
+        # También enviar los URLs necesarios para acciones desde el cliente
+        urls = {
+            'deleteFile': url_for("admin.delete_file", file_id=0), # Placeholder 0 para el ID
+            'deleteSelected': url_for("admin.delete_selected_files"),
+            'downloadBase': url_for("static", filename="downloads/") + 'files/' # La ruta para descargar archivos individuales del juego
+        }
+
+        return jsonify({
+            'files': files_data,
+            'pagination': {
+                'page': files_paginated.page,
+                'pages': files_paginated.pages,
+                'perPage': files_paginated.per_page,
+                'total': files_paginated.total,
+                'hasNext': files_paginated.has_next,
+                'hasPrev': files_paginated.has_prev
+            },
+            'urls': urls
         })
-    
-    return render_template('admin/files.html', 
-                         files=files,  # Para paginación en template
-                         files_data=files_data,  # Para JavaScript
-                         versions=versions,  # Para dropdowns en template
-                         versions_data=versions_data,  # Para JavaScript
-                         current_version_id=version_id)
+    except Exception as e:
+        current_app.logger.error(f"Error fetching files data: {e}")
+        return jsonify({'error': 'Error al cargar datos de archivos', 'details': str(e)}), 500
 
 @admin_bp.route('/files/upload', methods=['GET', 'POST'])
 @login_required
