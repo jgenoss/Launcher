@@ -25,15 +25,20 @@ os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'updates'), exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'files'), exist_ok=True)
 os.makedirs('static/downloads', exist_ok=True)
 
-#db = SQLAlchemy(app)
+# Inicializar extensiones
+db.init_app(app)
 
-#socketio.init_app(app)
+# IMPORTANTE: Inicializar SocketIO DESPUÉS de crear la app
+socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Importar modelos y rutas
 from models import User, GameVersion, GameFile, UpdatePackage, NewsMessage
+
+# Importar blueprints - DESPUÉS de crear socketio
 from api_routes import api_bp
 from admin_routes import admin_bp
 
@@ -41,12 +46,13 @@ from admin_routes import admin_bp
 app.register_blueprint(api_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 
-
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 from markupsafe import Markup, escape
 
+# Filtros de plantilla (mantén los existentes)
 @app.template_filter('nl2br')
 def nl2br_filter(s):
     if s is None:
@@ -91,6 +97,7 @@ def get_total_launcher_size_filter(launchers):
                 continue
     return format_file_size(total_bytes)
 
+# ==================== RUTAS EXISTENTES ====================
 @app.route('/')
 def index():
     return redirect(url_for('admin.dashboard'))
@@ -132,6 +139,57 @@ def serve_game_files(filename):
     """Sirve archivos individuales del juego"""
     return send_from_directory(os.path.join(app.config['UPLOAD_FOLDER'], 'files'), filename)
 
+# ===== EVENTOS DE SOCKETIO =====
+
+@socketio.on('connect', namespace='/admin')
+def handle_admin_connect():
+    """Cuando un admin se conecta"""
+    print(f'Admin conectado: {request.sid}')
+    emit('connection_status', {
+        'status': 'connected',
+        'message': 'Conexión establecida con el panel de administración'
+    })
+
+@socketio.on('disconnect', namespace='/admin')
+def handle_admin_disconnect():
+    """Cuando un admin se desconecta"""
+    print(f'Admin desconectado: {request.sid}')
+
+@socketio.on('request_stats', namespace='/admin')
+def handle_stats_request():
+    """Cuando se solicitan estadísticas en tiempo real"""
+    try:
+        # Aquí puedes obtener estadísticas en tiempo real
+        from models import DownloadLog, GameVersion
+        
+        total_downloads = DownloadLog.query.count()
+        latest_version = GameVersion.get_latest()
+        
+        stats = {
+            'total_downloads': total_downloads,
+            'latest_version': latest_version.version if latest_version else 'N/A',
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        emit('stats_update', stats)
+    except Exception as e:
+        emit('error', {'message': f'Error obteniendo estadísticas: {str(e)}'})
+
+@socketio.on('ping', namespace='/admin')
+def handle_ping():
+    """Responder a ping para mantener conexión"""
+    emit('pong', {'timestamp': datetime.utcnow().isoformat()})
+
+# Función para emitir notificaciones globales
+def emit_admin_notification(message, type='info', data=None):
+    """Emitir notificación a todos los admins conectados"""
+    socketio.emit('notification', {
+        'type': type,
+        'message': message,
+        'data': data or {},
+        'timestamp': datetime.utcnow().isoformat()
+    }, namespace='/admin')
+
 def create_admin_user():
     """Crear usuario administrador por defecto"""
     admin = User.query.filter_by(username='admin').first()
@@ -152,4 +210,4 @@ if __name__ == '__main__':
         #create_admin_user()
         port = 5000
         print(f"Iniciando servidor en puerto {port}")
-        app.run(app,debug=True, host='0.0.0.0', port=port)
+        socketio.run(app,debug=True, host='0.0.0.0', port=port)

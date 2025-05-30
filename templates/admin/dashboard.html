@@ -3,14 +3,13 @@
 {% block title %}Dashboard - Launcher Admin Panel{% endblock %}
 
 {% block content %}
-
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
     <h1 class="h2">
         <i class="bi bi-speedometer2 me-2"></i>Dashboard
     </h1>
     <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group me-2">
-            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshStats()">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="refreshStats">
                 <i class="bi bi-arrow-clockwise"></i> Actualizar
             </button>
         </div>
@@ -46,18 +45,17 @@
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
                     <div class="small fw-bold text-white-50 text-uppercase">Versiones del Juego</div>
-                    <div class="h2 mb-0 text-white">{{ total_versions }}</div>
+                    <div class="h2 mb-0 text-white">[[ stats.totalVersions ]]</div>
                 </div>
                 <div class="ms-3">
                     <i class="bi bi-tags" style="font-size: 2.5rem; opacity: 0.7;"></i>
                 </div>
             </div>
             <div class="mt-2">
-                {% if latest_version %}
-                <small class="text-white-50">Última: {{ latest_version.version }}</small>
-                {% else %}
-                <small class="text-white-50">No hay versiones</small>
-                {% endif %}
+                <small class="text-white-50">
+                    <span v-if="stats.latestVersion">Última: [[ stats.latestVersion ]]</span>
+                    <span v-else>No hay versiones</span>
+                </small>
             </div>
         </div>
     </div>
@@ -67,7 +65,7 @@
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
                     <div class="small fw-bold text-white-50 text-uppercase">Archivos del Juego</div>
-                    <div class="h2 mb-0 text-white">{{ total_files }}</div>
+                    <div class="h2 mb-0 text-white">[[ stats.totalFiles ]]</div>
                 </div>
                 <div class="ms-3">
                     <i class="bi bi-file-earmark" style="font-size: 2.5rem; opacity: 0.7;"></i>
@@ -84,7 +82,7 @@
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
                     <div class="small fw-bold text-white-50 text-uppercase">Paquetes de Actualización</div>
-                    <div class="h2 mb-0 text-white">{{ total_updates }}</div>
+                    <div class="h2 mb-0 text-white">[[ stats.totalUpdates ]]</div>
                 </div>
                 <div class="ms-3">
                     <i class="bi bi-download" style="font-size: 2.5rem; opacity: 0.7;"></i>
@@ -101,14 +99,14 @@
             <div class="d-flex align-items-center">
                 <div class="flex-grow-1">
                     <div class="small fw-bold text-white-50 text-uppercase">Descargas Totales</div>
-                    <div class="h2 mb-0 text-white">{{ total_downloads }}</div>
+                    <div class="h2 mb-0 text-white">[[ stats.totalDownloads ]]</div>
                 </div>
                 <div class="ms-3">
                     <i class="bi bi-cloud-download" style="font-size: 2.5rem; opacity: 0.7;"></i>
                 </div>
             </div>
             <div class="mt-2">
-                <small class="text-white-50">Últimas 24h: {{ recent_downloads }}</small>
+                <small class="text-white-50">Últimas 24h: [[ stats.recentDownloads ]]</small>
             </div>
         </div>
     </div>
@@ -131,7 +129,7 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ url_for('admin.download_logs') }}">Ver todos los logs</a>
                         </li>
-                        <li><a class="dropdown-item" href="./api/stats" target="_blank">API de estadísticas</a></li>
+                        <li><a class="dropdown-item" href="/api/stats" target="_blank">API de estadísticas</a></li>
                     </ul>
                 </div>
             </div>
@@ -153,28 +151,25 @@
                 <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold">Versión del Juego:</span>
-                        {% if latest_version %}
-                        <span class="badge bg-success">{{ latest_version.version }}</span>
-                        {% else %}
-                        <span class="badge bg-warning">No configurada</span>
-                        {% endif %}
+                        <span class="badge" :class="systemStatus.gameVersion ? 'bg-success' : 'bg-warning'">
+                            [[ systemStatus.gameVersion || 'No configurada' ]]
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold">Launcher Actual:</span>
-                        {% if current_launcher %}
-                        <span class="badge bg-primary">{{ current_launcher.version }}</span>
-                        {% else %}
-                        <span class="badge bg-warning">No configurado</span>
-                        {% endif %}
+                        <span class="badge" :class="systemStatus.launcherVersion ? 'bg-primary' : 'bg-warning'">
+                            [[ systemStatus.launcherVersion || 'No configurado' ]]
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="fw-bold">Mensajes Activos:</span>
-                        <span class="badge bg-info">{{ active_messages }}</span>
+                        <span class="badge bg-info">[[ stats.activeMessages ]]</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold">API Status:</span>
-                        <span class="badge bg-success" id="apiStatus">
-                            <i class="bi bi-check-circle me-1"></i>Online
+                        <span class="badge" :class="apiStatus.online ? 'bg-success' : 'bg-danger'">
+                            <i class="bi me-1" :class="apiStatus.online ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                            [[ apiStatus.online ? 'Online' : 'Offline' ]]
                         </span>
                     </div>
                 </div>
@@ -214,9 +209,34 @@
             </div>
             <div class="card-body">
                 <div id="recentActivity">
-                    <div class="text-center text-muted">
+                    <div v-if="loadingActivity" class="text-center text-muted">
                         <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                         Cargando actividad reciente...
+                    </div>
+                    <div v-else-if="recentActivity.error" class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Error cargando actividad reciente
+                    </div>
+                    <div v-else class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Descargas por Tipo</h6>
+                            <div class="list-group list-group-flush">
+                                <div v-for="item in recentActivity.downloadsByType" :key="item.type" 
+                                     class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="text-capitalize">[[ item.type || 'Desconocido' ]]</span>
+                                    <span class="badge bg-primary rounded-pill">[[ item.count ]]</span>
+                                </div>
+                                <div v-if="!recentActivity.downloadsByType || recentActivity.downloadsByType.length === 0" 
+                                     class="text-muted">No hay datos disponibles</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Últimas 24 horas</h6>
+                            <div class="text-muted">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Sistema funcionando correctamente
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -224,145 +244,43 @@
     </div>
 </div>
 
+<!-- Script de datos del servidor para Vue.js -->
+<script>
+    // Datos del servidor para Vue.js - DEBE ejecutarse ANTES que dashboard.js
+    window.DASHBOARD_DATA = {
+        stats: {
+            totalVersions: {{ total_versions|default(0) }},
+            totalFiles: {{ total_files|default(0) }},
+            totalUpdates: {{ total_updates|default(0) }},
+            totalDownloads: {{ total_downloads|default(0) }},
+            recentDownloads: {{ recent_downloads|default(0) }},
+            activeMessages: {{ active_messages|default(0) }},
+            latestVersion: '{{ latest_version.version if latest_version else "" }}'
+        },
+        systemStatus: {
+            gameVersion: '{{ latest_version.version if latest_version else "" }}',
+            launcherVersion: '{{ current_launcher.version if current_launcher else "" }}'
+        },
+        chartData: {{ downloads_by_day | tojson | safe if downloads_by_day else '[]' }}
+    };
+    
+    // Verificar que los datos estén disponibles
+    console.log('DASHBOARD_DATA disponible antes de Vue:', window.DASHBOARD_DATA);
+    
+    // Debug: mostrar valores específicos
+    console.log('Total versions:', {{ total_versions|default(0) }});
+    console.log('Total files:', {{ total_files|default(0) }});
+    console.log('Latest version:', '{{ latest_version.version if latest_version else "NONE" }}');
+</script>
 {% endblock %}
 
-{% block extra_js %}
+{% block vue_script %}
+<!-- Deshabilitar la instancia Vue por defecto de base.html -->
 <script>
-
-
-    // Downloads Chart
-    const ctx = document.getElementById('downloadsChart').getContext('2d');
-    const downloadsData = JSON.parse('{{ downloads_by_day | tojson | safe }}');
-
-    const chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: downloadsData.map(d => {
-                const date = new Date(d.date);
-                return date.toLocaleDateString('es-ES', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            }),
-            datasets: [{
-                label: 'Descargas',
-                data: downloadsData.map(d => d.count),
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            },
-            elements: {
-                point: {
-                    radius: 4,
-                    hoverRadius: 6
-                }
-            }
-        }
-    });
-
-    // Check API Status
-    async function checkApiStatus() {
-        try {
-            const response = await fetch('/api/status');
-            const data = await response();
-
-            const statusBadge = document.getElementById('apiStatus');
-            if (data.status === 'online') {
-                statusBadge.innerHTML = '<i class="bi bi-check-circle me-1"></i>Online';
-                statusBadge.className = 'badge bg-success';
-            } else {
-                statusBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Error';
-                statusBadge.className = 'badge bg-danger';
-            }
-        } catch (error) {
-            const statusBadge = document.getElementById('apiStatus');
-            statusBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Offline';
-            statusBadge.className = 'badge bg-danger';
-        }
-    }
-
-    // Load Recent Activity
-    async function loadRecentActivity() {
-        try {
-            const response = await fetch('/api/stats');
-            const data = await response();
-
-            // This would need to be implemented in the backend
-            // For now, show a placeholder
-            document.getElementById('recentActivity').innerHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="fw-bold mb-3">Descargas por Tipo</h6>
-                        <div class="list-group list-group-flush">
-                            ${data.downloads_by_type ? data.downloads_by_type.map(item =>
-                `<div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span class="text-capitalize">${item.type || 'Desconocido'}</span>
-                                    <span class="badge bg-primary rounded-pill">${item.count}</span>
-                                </div>`
-            ).join('') : '<div class="text-muted">No hay datos disponibles</div>'}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6 class="fw-bold mb-3">Últimas 24 horas</h6>
-                        <div class="text-muted">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Sistema funcionando correctamente
-                        </div>
-                    </div>
-                </div>
-            `;
-        } catch (error) {
-            document.getElementById('recentActivity').innerHTML =
-                '<div class="text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Error cargando actividad reciente</div>';
-        }
-    }
-
-    // Refresh Stats
-    function refreshStats() {
-        checkApiStatus();
-        loadRecentActivity();
-
-        // Show success message
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-success alert-dismissible fade show';
-        alertDiv.innerHTML = `
-            <i class="bi bi-check-circle me-2"></i>Estadísticas actualizadas
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.querySelector('.content-area').insertBefore(alertDiv, document.querySelector('.content-area').firstChild);
-
-        setTimeout(() => {
-            const alert = new bootstrap.Alert(alertDiv);
-            alert.close();
-        }, 3000);
-    }
-
-    // Initialize
-    document.addEventListener('DOMContentLoaded', function () {
-        checkApiStatus();
-        loadRecentActivity();
-
-        // Auto-refresh every 30 seconds
-        setInterval(checkApiStatus, 30000);
-    });
+    // Prevenir que base.html cree una instancia Vue que pueda interferir
+    window.DISABLE_DEFAULT_VUE = true;
+    
+    console.log('Dashboard template cargado, esperando dashboard.js...');
 </script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

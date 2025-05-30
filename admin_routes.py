@@ -8,17 +8,50 @@ import zipfile
 from datetime import datetime, timedelta
 import json
 
-from flask_socketio import SocketIO, emit
+from socketio_utils import (
+    notify_admin, 
+    notify_version_created, 
+    notify_files_uploaded, 
+    notify_update_created,
+    notify_message_created,
+    notify_launcher_uploaded,
+    test_socketio_connection,
+    broadcast_stats_update
+)
 
-socketio = SocketIO(cors_allowed_origins='*')  # Permitir CORS para SocketIO
 
 admin_bp = Blueprint('admin', __name__)
 
+
+# AGREGAR ESTA FUNCIÓN HELPER AL INICIO DEL ARCHIVO:
+# 2. AGREGAR RUTA PARA PROBAR SOCKETIO:
+@admin_bp.route('/test_socket')
+@login_required
+def test_socket():
+    """Probar emisión de eventos SocketIO"""
+    try:
+        # Usar la función de prueba
+        test_socketio_connection()
+        
+        # También enviar notificación específica del usuario
+        notify_admin(
+            f"🧪 Prueba de SocketIO iniciada por {current_user.username}",
+            'info',
+            {'user': current_user.username, 'test': True}
+        )
+        
+        flash('Mensaje de prueba enviado por SocketIO', 'success')
+    except Exception as e:
+        flash(f'Error enviando mensaje: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.dashboard'))
+
+# AGREGAR NOTIFICACIONES EN RUTAS IMPORTANTES:
+
+# ==================== FUNCIONES AUXILIARES ====================
+
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
-
-def handle_message(self, data):
-    print('received message: ' + str(data))
 
 def calculate_md5(file_path):
     """Calcular MD5 de un archivo"""
@@ -28,10 +61,7 @@ def calculate_md5(file_path):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-@admin_bp.route('/test_socket')
-def test_socket():
-    socketio.emit('mensaje_admin', {'msg': '¡Hola desde el backend!'}, namespace='/admin')
-    return 'Mensaje enviado por socketio'
+# ==================== DASHBOARD ====================
 
 @admin_bp.route('/')
 @login_required
@@ -88,6 +118,7 @@ def dashboard():
         flash(f'Error loading dashboard: {str(e)}', 'error')
         return render_template('admin/dashboard.html')
 
+# ==================== RUTAS ADMINISTRATIVAS ====================
 @admin_bp.route('/versions')
 @login_required
 def versions():
@@ -95,6 +126,7 @@ def versions():
     versions = GameVersion.query.order_by(GameVersion.created_at.desc()).all()
     return render_template('admin/versions.html', versions=versions)
 
+# ==================== RUTAS PARA VERSIONES DEL JUEGO ====================
 @admin_bp.route('/versions/create', methods=['GET', 'POST'])
 @login_required
 def create_version():
@@ -132,6 +164,7 @@ def create_version():
     
     return render_template('admin/create_version.html')
 
+# ==================== RUTAS PARA GESTIONAR VERSIONES ====================
 @admin_bp.route('/versions/<int:version_id>/set_latest')
 @login_required
 def set_latest_version(version_id):
@@ -145,6 +178,8 @@ def set_latest_version(version_id):
     
     return redirect(url_for('admin.versions'))
 
+
+# ==================== RUTAS PARA GESTIONAR ARCHIVOS DEL JUEGO ====================
 @admin_bp.route('/files')
 @login_required
 def files():
@@ -162,7 +197,47 @@ def files():
     
     versions = GameVersion.query.order_by(GameVersion.version.desc()).all()
     
-    return render_template('admin/files.html', files=files, versions=versions, current_version_id=version_id)
+    # 🔧 CONVERTIR A DICCIONARIOS PARA JSON
+    files_data = []
+    for file in files.items:
+        file_dict = {
+            'id': file.id,
+            'filename': file.filename,
+            'relative_path': file.relative_path,
+            'md5_hash': file.md5_hash,
+            'file_size': file.file_size,
+            'version_id': file.version_id,
+            'created_at': file.created_at.isoformat() if file.created_at else None,
+            'updated_at': file.updated_at.isoformat() if file.updated_at else None,
+            'version': None
+        }
+        
+        # Agregar información de la versión si existe
+        if file.version:
+            file_dict['version'] = {
+                'id': file.version.id,
+                'version': file.version.version,
+                'is_latest': file.version.is_latest
+            }
+        
+        files_data.append(file_dict)
+    
+    # Convertir versiones a diccionarios
+    versions_data = []
+    for version in versions:
+        versions_data.append({
+            'id': version.id,
+            'version': version.version,
+            'is_latest': version.is_latest,
+            'created_at': version.created_at.isoformat() if version.created_at else None
+        })
+    
+    return render_template('admin/files.html', 
+                         files=files,  # Para paginación en template
+                         files_data=files_data,  # Para JavaScript
+                         versions=versions,  # Para dropdowns en template
+                         versions_data=versions_data,  # Para JavaScript
+                         current_version_id=version_id)
 
 @admin_bp.route('/files/upload', methods=['GET', 'POST'])
 @login_required

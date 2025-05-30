@@ -23,31 +23,34 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form method="POST" id="versionForm">
+                <form @submit.prevent="submitVersion" ref="versionForm">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-floating mb-3">
                                 <input type="text" 
                                        class="form-control" 
-                                       id="version" 
-                                       name="version" 
+                                       :class="{ 'is-invalid': versionError }"
+                                       v-model="form.version"
+                                       @input="updatePreview"
+                                       @blur="autoCompleteVersion"
                                        placeholder="1.0.0.0" 
-                                       pattern="^\d+\.\d+\.\d+\.\d+$"
                                        required>
                                 <label for="version">
                                     <i class="bi bi-tag me-2"></i>Número de Versión
                                 </label>
                                 <div class="form-text">Formato: 1.0.0.0 (Mayor.Menor.Parche.Build)</div>
+                                <div v-if="versionError" class="invalid-feedback">
+                                    [[ versionError ]]
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-check form-switch mt-4">
                                 <input class="form-check-input" 
                                        type="checkbox" 
-                                       id="is_latest" 
-                                       name="is_latest"
-                                       checked>
-                                <label class="form-check-label" for="is_latest">
+                                       v-model="form.isLatest"
+                                       @change="updatePreview">
+                                <label class="form-check-label">
                                     <i class="bi bi-star me-2"></i>Establecer como versión actual
                                 </label>
                                 <div class="form-text">Si está marcado, esta será la versión que descarguen los clientes</div>
@@ -57,11 +60,11 @@
 
                     <div class="form-floating mb-4">
                         <textarea class="form-control" 
-                                  id="release_notes" 
-                                  name="release_notes" 
+                                  v-model="form.releaseNotes"
+                                  @input="updatePreview"
                                   placeholder="Descripción de los cambios..."
                                   style="height: 150px;"></textarea>
-                        <label for="release_notes">
+                        <label>
                             <i class="bi bi-journal-text me-2"></i>Notas de la Versión
                         </label>
                         <div class="form-text">Describe los cambios, mejoras y correcciones de esta versión</div>
@@ -71,11 +74,16 @@
                         <a href="{{ url_for('admin.versions') }}" class="btn btn-outline-secondary me-md-2">
                             <i class="bi bi-x-circle"></i> Cancelar
                         </a>
-                        <button type="submit" class="btn btn-primary" id="submitBtn">
-                            <span class="btn-text">
+                        <button type="submit" 
+                                class="btn btn-primary" 
+                                :disabled="!isFormValid || submitting">
+                            <span v-if="!submitting">
                                 <i class="bi bi-check-circle"></i> Crear Versión
                             </span>
-                            <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            <span v-else>
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                Creando...
+                            </span>
                         </button>
                     </div>
                 </form>
@@ -95,16 +103,19 @@
                 <div class="version-preview">
                     <div class="d-flex align-items-center mb-2">
                         <i class="bi bi-tag-fill text-primary me-2"></i>
-                        <strong id="previewVersion">1.0.0.0</strong>
-                        <span class="badge bg-success ms-2" id="previewBadge">Actual</span>
+                        <strong>[[ preview.version ]]</strong>
+                        <span class="badge ms-2" :class="preview.badgeClass">
+                            [[ preview.status ]]
+                        </span>
                     </div>
-                    <div class="text-muted small" id="previewDate">
-                        Fecha: <span id="currentDate"></span>
+                    <div class="text-muted small">
+                        Fecha: [[ preview.date ]]
                     </div>
                     <div class="mt-3">
                         <strong>Notas:</strong>
-                        <div class="bg-light p-2 rounded mt-1" id="previewNotes">
-                            <em class="text-muted">Sin notas...</em>
+                        <div class="bg-light p-2 rounded mt-1">
+                            <div v-if="preview.notes" v-html="preview.notesFormatted"></div>
+                            <em v-else class="text-muted">Sin notas...</em>
                         </div>
                     </div>
                 </div>
@@ -160,98 +171,12 @@
         </div>
     </div>
 </div>
-
 {% endblock %}
 
-{% block extra_js %}
+{% block vue_script %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const versionInput = document.getElementById('version');
-        const notesInput = document.getElementById('release_notes');
-        const isLatestInput = document.getElementById('is_latest');
-        const form = document.getElementById('versionForm');
-        const submitBtn = document.getElementById('submitBtn');
-        
-        // Set current date
-        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-ES');
-        
-        // Live preview updates
-        versionInput.addEventListener('input', function() {
-            const version = this.value || '1.0.0.0';
-            document.getElementById('previewVersion').textContent = version;
-        });
-        
-        notesInput.addEventListener('input', function() {
-            const notes = this.value.trim();
-            const previewNotes = document.getElementById('previewNotes');
-            
-            if (notes) {
-                previewNotes.innerHTML = notes.replace(/\n/g, '<br>');
-                previewNotes.className = 'bg-light p-2 rounded mt-1';
-            } else {
-                previewNotes.innerHTML = '<em class="text-muted">Sin notas...</em>';
-                previewNotes.className = 'bg-light p-2 rounded mt-1';
-            }
-        });
-        
-        isLatestInput.addEventListener('change', function() {
-            const badge = document.getElementById('previewBadge');
-            if (this.checked) {
-                badge.textContent = 'Actual';
-                badge.className = 'badge bg-success ms-2';
-            } else {
-                badge.textContent = 'Archivada';
-                badge.className = 'badge bg-secondary ms-2';
-            }
-        });
-        
-        // Form validation
-        form.addEventListener('submit', function(e) {
-            const version = versionInput.value.trim();
-            const versionPattern = /^\d+\.\d+\.\d+\.\d+$/;
-            
-            if (!versionPattern.test(version)) {
-                e.preventDefault();
-                alert('El formato de versión debe ser: MAYOR.MENOR.PARCHE.BUILD (ej: 1.0.0.0)');
-                versionInput.focus();
-                return;
-            }
-            
-            // Show loading state
-            const btnText = submitBtn.querySelector('.btn-text');
-            const spinner = submitBtn.querySelector('.spinner-border');
-            
-            submitBtn.disabled = true;
-            btnText.innerHTML = '<i class="bi bi-hourglass"></i> Creando...';
-            spinner.classList.remove('d-none');
-        });
-        
-        // Version input formatting
-        versionInput.addEventListener('keypress', function(e) {
-            // Only allow numbers and dots
-            if (!/[\d\.]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter'].includes(e.key)) {
-                e.preventDefault();
-            }
-        });
-        
-        // Auto-complete version format
-        versionInput.addEventListener('blur', function() {
-            let version = this.value.trim();
-            if (version && !/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
-                // Try to auto-complete incomplete versions
-                const parts = version.split('.');
-                while (parts.length < 4) {
-                    parts.push('0');
-                }
-                this.value = parts.slice(0, 4).join('.');
-                
-                // Trigger input event to update preview
-                this.dispatchEvent(new Event('input'));
-            }
-        });
-        
-        // Set focus on version input
-        versionInput.focus();
-    });
+    // Deshabilitar la instancia Vue por defecto
+    window.DISABLE_DEFAULT_VUE = true;
 </script>
+<script src="{{ url_for('static', filename='js/create_version.js') }}"></script>
 {% endblock %}
